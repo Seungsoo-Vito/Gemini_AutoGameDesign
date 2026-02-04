@@ -5,16 +5,19 @@ import requests
 import base64
 import json
 import zlib
+import streamlit.components.v1 as components
 
-# 1. 페이지 설정 (넓은 화면 모드 적용)
+# 1. 페이지 설정
 st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
 
-# API 설정
-API_KEY = "AIzaSyBpUR0gl_COhxbFPWxTiW6JJMuGgDF4Ams"
+# --- 🔒 API 설정 (여기에 직접 입력하세요) ---
+API_KEY = "AIzaSyBpUR0gl_COhxbFPWxTiW6JJMuGgDF4Ams" 
 genai.configure(api_key=API_KEY)
 
 # --- 🎨 이미지 생성 함수 (Imagen 4.0 사용) ---
 def generate_game_image(prompt_text):
+    if not API_KEY:
+        return None
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={API_KEY}"
     payload = {
         "instances": [{"prompt": prompt_text}],
@@ -63,7 +66,7 @@ def create_pdf(text, keywords):
             
     return pdf.output()
 
-# --- 🔗 공유 데이터 인코딩/디코딩 (데이터 보존용) ---
+# --- 🔗 공유 데이터 인코딩/디코딩 ---
 def encode_data(data_dict):
     json_str = json.dumps(data_dict)
     compressed = zlib.compress(json_str.encode())
@@ -87,14 +90,14 @@ if 'generated_images' not in st.session_state:
 if 'editing_index' not in st.session_state:
     st.session_state['editing_index'] = -1
 
-# 2. 공유 링크 확인 (URL 파라미터 체크)
+# 2. 공유 링크 확인
 query_params = st.query_params
 if "shared_data" in query_params:
     shared_content = decode_data(query_params["shared_data"])
     if shared_content:
         st.session_state['gdd_result'] = shared_content.get('content')
         st.session_state['generated_images'] = shared_content.get('images', {})
-        st.info("💡 공유된 기획서를 열람 중입니다.")
+        st.info("💡 공유된 기획서를 열람 중입니다. (읽기 전용)")
         if st.button("새 기획서 작성하러 가기"):
             st.query_params.clear()
             st.rerun()
@@ -120,14 +123,11 @@ with st.sidebar:
             
             with st.container():
                 col_main, col_tools = st.columns([3, 2])
-                
-                # 불러오기 버튼
                 if col_main.button(f"📄 {display_name}", key=f"hist_l_{i}"):
                     st.session_state['gdd_result'] = item['content']
                     st.session_state['generated_images'] = item.get('images', {})
                     st.session_state['editing_index'] = -1
                 
-                # 도구 버튼들 (편집, 공유)
                 btn_edit = col_tools.button("✏️", key=f"h_e_{i}")
                 btn_share = col_tools.button("🔗", key=f"h_s_{i}")
                 
@@ -136,13 +136,12 @@ with st.sidebar:
                     st.rerun()
                 
                 if btn_share:
-                    # 공유 데이터 생성 및 URL 출력
                     share_payload = {"content": item['content'], "images": item['images']}
                     encoded = encode_data(share_payload)
-                    share_url = f"{st.get_option('browser.serverAddress') if st.get_option('browser.serverAddress') else 'localhost'}?shared_data={encoded}"
-                    st.text_input("공유 링크 (복사해서 전달하세요)", value=share_url, key=f"share_url_{i}")
+                    st.query_params["shared_data"] = encoded
+                    st.success("주소창에 공유 링크가 생성되었습니다!")
+                    st.info("상단 브라우저 주소창의 전체 주소를 복사해서 전달해 주세요.")
 
-                # 이름 수정 입력창
                 if st.session_state['editing_index'] == i:
                     new_name = st.text_input("새 이름", value=display_name, key=f"h_n_i_{i}")
                     if st.button("저장", key=f"h_s_b_{i}"):
@@ -155,7 +154,7 @@ with st.sidebar:
             st.session_state['history'] = []
             st.rerun()
 
-# 4. 입력창 및 생성 로직 (공유 모드가 아닐 때만 표시)
+# 4. 입력창 및 생성 로직
 if "shared_data" not in query_params:
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -166,7 +165,9 @@ if "shared_data" not in query_params:
         keywords = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프, 덱빌딩")
 
     if st.button("전문 기획서 및 AI 이미지 생성 ✨", type="primary"):
-        if not keywords:
+        if not API_KEY:
+            st.error("코드 상단의 API_KEY 변수에 키를 입력해주세요.")
+        elif not keywords:
             st.warning("핵심 키워드를 입력해 주세요.")
         else:
             with st.spinner("AI PM이 기획서를 작성하고 이미지를 생성 중입니다..."):
@@ -217,7 +218,7 @@ if st.session_state['gdd_result']:
         elif ("UI" in section or "인터페이스" in section) and "ui" in images:
             st.image(base64.b64decode(images["ui"]), caption="UI/UX 가이드", width=800)
 
-    # PDF 다운로드 버튼 (최하단)
+    # PDF 다운로드 버튼
     st.divider()
     try:
         pdf_bytes = create_pdf(st.session_state['gdd_result'], "Game_Design_Document")
@@ -231,4 +232,4 @@ if st.session_state['gdd_result']:
     except:
         st.error("PDF 생성 중 문제가 발생했습니다.")
 
-st.caption("비토쨩이 테스트로 만들었단다.")
+st.caption("비토쨩이 테스트로 만들었단다. © 2026 Game PM AI Assistant")
