@@ -55,19 +55,25 @@ st.markdown("""
     
     /* 이미지 및 캡션 최적화 */
     .img-wrapper {
-        max-width: 700px; /* 크기 최적화 */
-        margin: 30px auto;
+        max-width: 700px; /* 사용자 요청 크기 고정 */
+        margin: 35px auto;
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border: 1px solid #f1f5f9;
+    }
+    
+    .img-wrapper img {
+        width: 100%;
+        display: block;
     }
     
     .img-caption {
         font-size: 0.85rem;
         color: #64748b;
         text-align: center;
-        margin-top: -20px;
-        margin-bottom: 30px;
+        margin-top: -25px;
+        margin-bottom: 45px;
         font-weight: 500;
         font-style: italic;
     }
@@ -115,10 +121,10 @@ if API_KEY:
 def generate_specialized_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
-        "concept": f"Cinematic epic game key visual, {genre}, {key} theme, {art} style. 8k, high quality professional art.",
-        "ui": f"Professional game UI/UX design mockup, {genre} mobile game interface, {art} style. Inventory screen, menu buttons, high fidelity digital design.",
-        "world": f"Immersive environment background art, world of {genre}, location based on {key}, {art} style. Detailed scenery.",
-        "character": f"Character concept art or detailed asset sheet, {genre}, {key} motif, {art} style. Clear presentation."
+        "concept": f"Cinematic epic game key visual, {genre}, {key} theme, {art} style. 8k resolution, high quality professional digital art.",
+        "ui": f"Professional game UI and UX design mockup, {genre} mobile game interface, {art} style. High fidelity dashboard, menu buttons, clean layout, inspired by {key}.",
+        "world": f"Immersive environment concept art, detailed world of {genre}, location based on {key}, {art} style. Atmospheric lighting.",
+        "character": f"Character concept art portrait or detailed asset sheet, {genre}, {key} motif, {art} style. Professional game character design."
     }
     selected_prompt = prompts.get(prompt_type, prompts["concept"])
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={API_KEY}"
@@ -169,17 +175,19 @@ with st.container():
             with st.spinner("시니어 기획자가 시스템과 콘텐츠를 설계 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
                 prompt = f"""
-                당신은 전설적인 게임 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 GDD를 작성하세요.
+                당신은 전설적인 게임 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 전문적인 게임 디자인 문서(GDD)를 작성하세요.
                 
-                특히 다음 섹션을 매우 상세하게 작성해 주세요:
-                1. ## 핵심 게임 시스템: 핵심 메커니즘, 전투/성장 공식, 주요 수치 밸런싱 가이드.
-                2. ## 주요 콘텐츠 및 순환 구조: 초기/중기/말기 콘텐츠 구성, 유저의 일일 플레이 사이클(Daily Loop).
-                3. ## UI/UX 및 편의성 전략: 사용자 경험을 극대화하기 위한 인터페이스 설계 방향.
+                문서는 다음 섹션을 포함하며 매우 상세하게 작성해 주세요:
+                1. ## 개요 및 핵심 컨셉: 키워드 {key}가 어떻게 게임의 재미가 되는지 서술.
+                2. ## 세계관 및 아트 방향성: {art} 스타일을 활용한 몰입감 있는 배경 설명.
+                3. ## 핵심 게임 시스템: 전투, 성장, 경제 밸런스 등 메커니즘 상세.
+                4. ## 주요 콘텐츠 구성: 유저가 매일 즐길 수 있는 루프와 장기적 콘텐츠.
+                5. ## UI/UX 및 사용자 경험: 직관적인 인터페이스 설계 및 조작 체계 전략.
+                6. ## 캐릭터 및 주요 에셋: 등장 인물 또는 유닛의 디자인 특징.
                 
                 [형식 지시]
-                - ## 섹션 제목, ### 소제목 형식을 유지하세요.
-                - 마크다운 불렛(*)과 **강조**를 적극적으로 사용하세요.
-                - 전문적이고 구체적인 용어를 사용하세요.
+                - ## 섹션 제목, ### 소제목 형식을 엄격히 유지하세요.
+                - 마크다운 불렛(*)과 **강조**를 적극적으로 사용하여 가독성을 높이세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
@@ -195,38 +203,55 @@ with st.container():
 
 # --- 5. Result Display Logic ---
 def render_gdd_content(content, imgs, title_key):
-    # 이 함수는 화면 출력용 HTML을 생성합니다.
     html = f"<div id='gdd-preview-container'>"
     html += f"<h1 class='gdd-h1'>{title_key.upper()} 기획안</h1>"
     
+    # 0. 메인 컨셉 이미지 (상단 고정)
     if imgs.get("concept"):
-        html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['concept']}' style='width:100%;'></div><div class='img-caption'>[Main Concept Visual]</div>"
+        html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['concept']}'></div><div class='img-caption'>[Main Visual Concept]</div>"
     
     parts = content.split("## ")
+    image_indices = {
+        "세계관": imgs.get("world"),
+        "아트": imgs.get("world"),
+        "시스템": imgs.get("ui"),
+        "UI": imgs.get("ui"),
+        "UX": imgs.get("ui"),
+        "인터페이스": imgs.get("ui"),
+        "캐릭터": imgs.get("asset"),
+        "에셋": imgs.get("asset"),
+        "콘텐츠": imgs.get("world")
+    }
+    
+    used_images = set()
+
     for i, part in enumerate(parts):
         if not part.strip(): continue
         
-        # 제목과 본문 분리
         lines = part.split("\n")
         section_title = lines[0].strip()
         section_body = "\n".join(lines[1:]).strip()
         
         html += f"<h2 class='gdd-h2'>{section_title}</h2>"
         
-        # 마크다운 기본 변환 (볼드, 소제목, 불렛)
         processed_body = section_body.replace("### ", "<h3 class='gdd-h3'>").replace("\n", "<br>")
         processed_body = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', processed_body)
         processed_body = re.sub(r'^\* (.*?)$', r'<li class="gdd-li">\1</li>', processed_body, flags=re.M)
         
         html += f"<div class='gdd-p'>{processed_body}</div>"
         
-        # 지능형 이미지 배치
-        if i == 1 and imgs.get("world"):
-            html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['world']}' style='width:100%;'></div><div class='img-caption'>[World & Concept Reference]</div>"
-        elif ("시스템" in section_title or "UI" in section_title) and imgs.get("ui"):
-            html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['ui']}' style='width:100%;'></div><div class='img-caption'>[UI/UX Mockup Design]</div>"
-        elif i == len(parts)-1 and imgs.get("asset"):
-            html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['asset']}' style='width:100%;'></div><div class='img-caption'>[Core Asset & Character]</div>"
+        # 지능형 섹션별 이미지 배치
+        matched_img = None
+        caption_text = ""
+        
+        for key, img in image_indices.items():
+            if key in section_title and img:
+                matched_img = img
+                caption_text = f"[{key} Visual Reference]"
+                break
+        
+        if matched_img:
+            html += f"<div class='img-wrapper'><img src='data:image/png;base64,{matched_img}'></div><div class='img-caption'>{caption_text}</div>"
 
     html += "</div>"
     return html
@@ -273,23 +298,31 @@ if st.session_state['gdd_result']:
                 let html = `<html><head><meta charset="UTF-8">`;
                 html += `<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">`;
                 html += `<style>
-                    body {{ font-family: 'Pretendard', sans-serif; padding: 50px; color: #1e293b; max-width: 800px; margin: 0 auto; line-height: 1.8; }}
+                    body {{ font-family: 'Pretendard', sans-serif; padding: 50px; color: #1e293b; max-width: 800px; margin: 0 auto; line-height: 1.8; background: white; }}
                     h1 {{ font-size: 42px; border-bottom: 6px solid #4f46e5; padding-bottom: 15px; text-align: center; font-weight: 900; }}
-                    img {{ max-width: 100%; border-radius: 12px; margin: 25px 0; }}
+                    h2 {{ color: #4f46e5; margin-top: 45px; border-left: 10px solid #4f46e5; padding: 10px 20px; background: #f8fafc; font-size: 26px; font-weight: 800; }}
+                    h3 {{ font-size: 20px; font-weight: 700; margin-top: 25px; border-bottom: 1px solid #f1f5f9; }}
+                    img {{ max-width: 700px; border-radius: 12px; margin: 25px auto; display: block; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
                     p, li {{ font-size: 17px; color: #334155; }}
                     strong {{ color: #4f46e5; }}
-                    .cap {{ text-align: center; color: #94a3b8; font-size: 13px; margin-top: -15px; margin-bottom: 30px; font-weight: 500; }}
+                    .cap {{ text-align: center; color: #94a3b8; font-size: 13px; margin-top: -15px; margin-bottom: 40px; font-weight: 500; }}
                 </style></head><body>`;
                 
                 html += `<h1>${{data.title}}</h1>`;
-                if(data.images.concept) html += `<center><img src="data:image/png;base64,${{data.images.concept}}"></center><div class="cap">[Main Concept]</div>`;
+                if(data.images.concept) html += `<img src="data:image/png;base64,${{data.images.concept}}"><div class="cap">[Main Concept Visual]</div>`;
                 
                 const parts = data.content.split('## ');
                 parts.forEach((p, i) => {{
                     if(!p.trim()) return;
+                    let st = p.split('\\n')[0];
                     html += cleanMd((i > 0 ? '## ' : '') + p);
-                    if(i === 1 && data.images.world) html += `<center><img src="data:image/png;base64,${{data.images.world}}"></center><div class="cap">[World View]</div>`;
-                    if(i === 3 && data.images.ui) html += `<center><img src="data:image/png;base64,${{data.images.ui}}"></center><div class="cap">[UI/UX Design]</div>`;
+                    
+                    if((st.includes("세계관") || st.includes("아트") || st.includes("콘텐츠")) && data.images.world) 
+                        html += `<img src="data:image/png;base64,${{data.images.world}}"><div class="cap">[Visual Reference]</div>`;
+                    if((st.includes("시스템") || st.includes("UI") || st.includes("인터페이스")) && data.images.ui) 
+                        html += `<img src="data:image/png;base64,${{data.images.ui}}"><div class="cap">[UI/UX Mockup]</div>`;
+                    if((st.includes("캐릭터") || st.includes("에셋")) && data.images.asset) 
+                        html += `<img src="data:image/png;base64,${{data.images.asset}}"><div class="cap">[Character & Asset]</div>`;
                 }});
                 
                 html += `</body></html>`;
@@ -300,7 +333,7 @@ if st.session_state['gdd_result']:
                 const win = window.open('', '_blank');
                 win.document.write(buildDoc(data));
                 win.document.close();
-                win.onload = () => setTimeout(() => {{ win.focus(); win.print(); }}, 600);
+                win.onload = () => setTimeout(() => {{ win.focus(); win.print(); }}, 800);
             }};
 
             document.getElementById('pngBtn').onclick = () => {{
@@ -312,15 +345,15 @@ if st.session_state['gdd_result']:
                 document.body.appendChild(div);
 
                 setTimeout(() => {{
-                    html2canvas(div, {{ useCORS: true, scale: 2.5, backgroundColor: "#ffffff" }}).then(canvas => {{
+                    html2canvas(div, {{ useCORS: true, scale: 2.2, backgroundColor: "#ffffff" }}).then(canvas => {{
                         const a = document.createElement('a');
-                        a.download = `GDD_${{data.title}}.png`;
+                        a.download = `VitoGDD_${{data.title}}.png`;
                         a.href = canvas.toDataURL('image/png');
                         a.click();
                         btn.innerText = "🖼️ 고화질 이미지(PNG) 저장";
                         document.body.removeChild(div);
                     }});
-                }}, 1200);
+                }}, 1500);
             }};
         </script>
     """, height=100)
