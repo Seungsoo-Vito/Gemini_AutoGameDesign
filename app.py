@@ -152,7 +152,7 @@ if st.session_state['gdd_result']:
             
             function inline(t) {{
                 return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
-            }
+            }}
 
             function createImgBox(b64, label) {{
                 if(!b64) return '';
@@ -160,7 +160,7 @@ if st.session_state['gdd_result']:
                     <img src="data:image/png;base64,${{b64}}" style="width:100%; border-radius:15px; box-shadow:0 15px 35px rgba(0,0,0,0.1);">
                     <div style="font-size:16px; color:#6366f1; font-weight:800; margin-top:20px; text-transform:uppercase; letter-spacing:1px;">[Reference: ${{label}}]</div>
                 </div>`;
-            }
+            }}
 
             function parseContent(text) {{
                 return text.split('\\n').map(line => {{
@@ -168,7 +168,9 @@ if st.session_state['gdd_result']:
                     if (!l || l === '#' || l === '##' || l === '###') return '';
                     
                     // 수식 처리
-                    if (l.startsWith('$$')) return `<div style="background:#f8faff; border:1px solid #c7d2fe; padding:30px; border-radius:12px; text-align:center; font-size:24px; font-weight:700; color:#3730a3; margin:40px 0; font-family:'Times New Roman', serif;">${{inline(l.replace(/\\$\\$/g, ''))}}</div>`;
+                    if (l.startsWith('$$')) {{
+                        return `<div style="background:#f8faff; border:1px solid #c7d2fe; padding:30px; border-radius:12px; text-align:center; font-size:24px; font-weight:700; color:#3730a3; margin:40px 0; font-family:'Times New Roman', serif;">${{inline(l.replace(/\\$\\$/g, ''))}}</div>`;
+                    }}
                     
                     // 표 처리
                     if (l.startsWith('|')) {{
@@ -180,7 +182,7 @@ if st.session_state['gdd_result']:
                     // 상위 제목 (##) - Indigo Blue + # 제거
                     if (l.startsWith('## ')) {{
                         return `<h2 style="font-size:34px; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:20px; margin-top:60px; background:#f8fafc; padding:15px 20px; border-radius:0 12px 12px 0; font-weight:800;">${{l.replace(/^##\\s*/, '')}}</h2>`;
-                    }
+                    }}
                     
                     // 하위 제목 (###) - Teal Green + # 제거
                     if (l.startsWith('### ')) {{
@@ -196,7 +198,7 @@ if st.session_state['gdd_result']:
                     // 일반 본문
                     return `<p style="font-size:21px; color:#334155; margin-bottom:25px; line-height:1.9; text-align:justify;">${{inline(l)}}</p>`;
                 }}).join('');
-            }
+            }}
 
             let bodyHtml = parseContent(data.content).replace(/(<tr>.*?<\\/tr>)+/g, m => `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; margin:30px 0; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">${{m}}</table></div>`);
 
@@ -227,6 +229,12 @@ if st.session_state['gdd_result']:
             }};
         }})();
     </script>
-    <style> @media print {{ .no-print {{ display: none !important; }} body {{ background: white !important; padding:0 !important; }} #gdd-paper {{ box-shadow: none !important; border: none !important; margin:0 !important; width:100% !important; }} }} </style>
+    <style> 
+        @media print {{ 
+            .no-print {{ display: none !important; }} 
+            body {{ background: white !important; padding:0 !important; }} 
+            #gdd-paper {{ box-shadow: none !important; border: none !important; margin:0 !important; width:100% !important; }} 
+        }} 
+    </style>
     """
     components.html(html_template, height=9000, scrolling=True)
