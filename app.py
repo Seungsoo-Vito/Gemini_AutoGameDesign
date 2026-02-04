@@ -18,17 +18,27 @@ st.markdown("""
     .stApp { background-color: #f1f5f9; color: #1e293b; font-family: 'Pretendard', sans-serif; }
     [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
     .main-title {
-        font-size: calc(2.5rem + 2vw) !important; font-weight: 900 !important;
+        font-size: calc(2.5rem + 2vw) !important; 
+        font-weight: 900 !important;
         background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        text-align: center; margin-bottom: 0.5rem !important;
+        -webkit-background-clip: text; 
+        -webkit-text-fill-color: transparent;
+        text-align: center; 
+        margin-bottom: 0.5rem !important;
     }
     div.stButton > button {
-        border-radius: 12px !important; font-weight: 700 !important;
-        transition: all 0.2s; height: 3.8rem;
+        border-radius: 12px !important; 
+        font-weight: 700 !important;
+        transition: all 0.2s; 
+        height: 3.8rem;
     }
     .status-card {
-        padding: 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 8px; font-size: 0.9rem;
+        padding: 12px; 
+        border-radius: 10px; 
+        background: #f8fafc; 
+        border: 1px solid #e2e8f0; 
+        margin-bottom: 8px; 
+        font-size: 0.9rem;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -60,7 +70,6 @@ def generate_hd_image(prompt_type, genre, art, key):
     if prompt_type not in prompts: return None
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={API_KEY}"
-    # 💡 중요: imagen-4.0의 정확한 호출 규격인 단일 오브젝트 형식으로 수정
     payload = {
         "instances": {"prompt": prompts[prompt_type]}, 
         "parameters": {"sampleCount": 1}
@@ -116,7 +125,8 @@ with st.container():
                 3. 의미 없는 '#' 한 줄 구분선은 절대 넣지 마세요.
                 4. 전투 공식, 시너지 시스템, 경제 구조를 매우 구체적으로 기술하세요.
                 5. 복잡한 데이터는 반드시 | 헤더 | 마크다운 표 형식으로 작성하세요.
-                6. 'UI/UX 전략' 섹션을 반드시 포함하여 상세히 기술하세요.
+                6. '## UI/UX 전략 및 인터페이스 설계' 섹션을 반드시 포함하세요.
+                7. 위 섹션 하위에 '### UI/UX 목업' 항목을 만들고 해당 화면의 구성 요소를 상세히 기술하세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
@@ -139,6 +149,21 @@ if st.session_state['gdd_result']:
     }).replace("\\", "\\\\").replace("'", "\\'")
 
     html_code = """
+    <style>
+        /* 인쇄 시 버튼 영역 숨기기 전용 CSS */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; padding: 0 !important; }
+            #capture-page { 
+                box-shadow: none !important; 
+                border: none !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                width: 100% !important;
+                max-width: none !important;
+            }
+        }
+    </style>
     <div id="root-container"></div>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script>
@@ -146,7 +171,7 @@ if st.session_state['gdd_result']:
             const data = JSON.parse('ST_DATA_JSON');
             
             // 🚀 기호 완전 박멸 및 고품격 태그 변환기
-            function formatText(text) {
+            function formatText(text, uiImg) {
                 return text.split('\\n').map(line => {
                     let l = line.trim();
                     if (!l || l === '#' || l === '##' || l === '###') return '';
@@ -163,7 +188,14 @@ if st.session_state['gdd_result']:
                         return `<h2 style="font-size:36px; font-weight:900; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:25px; background:#f8fafc; margin-top:80px; margin-bottom:30px; border-radius:0 15px 15px 0;">${l.replace(/^##\s*/, '')}</h2>`;
                     }
                     if (l.startsWith('###')) {
-                        return `<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${l.replace(/^###\s*/, '')}</h3>`;
+                        const subTitle = l.replace(/^###\s*/, '');
+                        let html = `<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${subTitle}</h3>`;
+                        
+                        // 🌟 'UI/UX 목업' 항목 감지 시 이미지 바로 주입
+                        if ((subTitle.includes('목업') || subTitle.includes('Mockup')) && uiImg) {
+                            html += imgBox(uiImg, 'UI/UX SYSTEM MOCKUP');
+                        }
+                        return html;
                     }
                     
                     // 3. 구분선
@@ -182,7 +214,7 @@ if st.session_state['gdd_result']:
                 if (!b64) return '';
                 const src = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
                 return `
-                    <div style="text-align:center; margin:90px 0; padding:40px; background:#f8fafc; border-radius:32px; border:1px solid #e2e8f0;">
+                    <div style="text-align:center; margin:60px 0; padding:40px; background:#f8fafc; border-radius:32px; border:1px solid #e2e8f0;">
                         <img src="${src}" style="width:100%; max-width:1100px; border-radius:20px; box-shadow:0 25px 50px rgba(0,0,0,0.15);">
                         <div style="color:#64748b; font-size:18px; margin-top:25px; font-weight:700; font-style:italic;">[REFERENCE: ${label}]</div>
                     </div>`;
@@ -190,39 +222,35 @@ if st.session_state['gdd_result']:
 
             function renderAll() {
                 const root = document.getElementById('root-container');
-                let docHtml = `<div id="capture-page" style="background:white; padding:120px 100px; border-radius:40px; font-family:'Pretendard', sans-serif; color:#1e293b; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 40px 80px rgba(0,0,0,0.08);">`;
                 
-                docHtml += `<h1 style="font-size:80px; font-weight:900; text-align:center; border-bottom:15px solid #4f46e5; padding-bottom:50px; margin-bottom:100px; letter-spacing:-0.05em;">${data.title}</h1>`;
-                
-                // [1] 메인 비주얼
-                docHtml += imgBox(data.images.concept, 'PROJECT CORE VISUAL');
-                
-                // [2] 본문 렌더링 및 UI 이미지 매칭
-                const sections = data.content.split('## ');
-                let uiPlaced = false;
-
-                sections.forEach((sec, i) => {
-                    if (!sec.trim()) return;
-                    docHtml += formatText((i > 0 ? '## ' : '') + sec);
-                    
-                    // UI/UX 섹션이 나오면 이미지 삽입
-                    if (!uiPlaced && data.images.ui && (sec.includes('UI') || sec.includes('UX') || sec.includes('인터페이스'))) {
-                        docHtml += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
-                        uiPlaced = true;
-                    }
-                });
-
-                // 안전장치: UI 이미지가 있는데 안 쓰였다면 마지막에 추가
-                if (!uiPlaced && data.images.ui) docHtml += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
-
-                docHtml += `</div>`;
-                
-                root.innerHTML = `
-                    <div style="display:flex; gap:30px; margin-bottom:60px; max-width:1200px; margin:0 auto;">
+                // 🚀 버튼 영역 (no-print 클래스 추가로 인쇄 시 제외)
+                let btns = `
+                    <div class="no-print" style="display:flex; gap:30px; margin-bottom:60px; max-width:1200px; margin:0 auto;">
                         <button onclick="window.print()" style="flex:1; background:#4f46e5; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(79,70,229,0.3);">📄 PDF 문서로 저장하기</button>
                         <button id="imgDown" style="flex:1; background:#7c3aed; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(124,58,237,0.3);">🖼️ 리포트 이미지 저장</button>
-                    </div>` + docHtml;
+                    </div>`;
 
+                // 🚀 문서 본체 영역 (캡처 대상)
+                let doc = `<div id="capture-page" style="background:white; padding:120px 100px; border-radius:40px; font-family:'Pretendard', sans-serif; color:#1e293b; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 40px 80px rgba(0,0,0,0.08);">`;
+                
+                doc += `<h1 style="font-size:80px; font-weight:900; text-align:center; border-bottom:15px solid #4f46e5; padding-bottom:50px; margin-bottom:100px; letter-spacing:-0.05em;">${data.title}</h1>`;
+                
+                // [1] 메인 비주얼
+                doc += imgBox(data.images.concept, 'PROJECT CORE VISUAL');
+                
+                // [2] 본문 렌더링
+                const sections = data.content.split('## ');
+                sections.forEach((sec, i) => {
+                    if (!sec.trim()) return;
+                    doc += formatText((i > 0 ? '## ' : '') + sec, data.images.ui);
+                });
+
+                doc += `</div>`;
+                
+                // 버튼과 문서를 분리하여 root에 삽입
+                root.innerHTML = btns + doc;
+
+                // 이미지 저장 핸들러 (capture-page만 타겟팅)
                 document.getElementById('imgDown').onclick = function() {
                     this.innerText = "⏳ 렌더링 중...";
                     html2canvas(document.getElementById('capture-page'), { scale: 2, useCORS: true }).then(canvas => {
