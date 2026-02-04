@@ -46,6 +46,8 @@ st.markdown("""
         color: #1e293b;
         line-height: 1.8;
         font-family: 'Pretendard', sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
     }
     
     #gdd-capture-area h1 {
@@ -108,7 +110,7 @@ st.markdown("""
     .gdd-img-container {
         margin: 40px auto;
         text-align: center;
-        max-width: 800px;
+        width: 800px;
     }
     
     .img-caption {
@@ -135,24 +137,29 @@ st.markdown("""
 
     /* 🖨️ Print Styles (Optimized for PDF) */
     @media print {
-        [data-testid="stSidebar"], .main-title, footer, header, .stButton, hr, .stMarkdown:not(#gdd-capture-area *) {
-            display: none !important;
+        /* 전체 숨김 처리 */
+        body * {
+            visibility: hidden;
         }
-        
+        /* 기획서 영역만 표시 */
+        #gdd-capture-area, #gdd-capture-area * {
+            visibility: visible;
+        }
         #gdd-capture-area {
             position: absolute;
             left: 0;
             top: 0;
             width: 100% !important;
-            padding: 0 !important;
+            max-width: 100% !important;
+            padding: 20px !important;
             margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
         }
-        
-        .stApp { background: white !important; }
-        .stImage, img, h1, h2, h3 { page-break-inside: avoid; }
-        body { background-color: white !important; }
+        /* 페이지 끊김 방지 */
+        h1, h2, h3, img, .stImage {
+            page-break-inside: avoid;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -218,7 +225,7 @@ with st.sidebar:
 
 # --- 4. UI Main ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro 🎮</h1>', unsafe_allow_html=True)
-st.write("이미지 크기를 최적화한 고품격 게임 기획서 생성기입니다.")
+st.write("이미지 크기를 최적화하고 PDF 저장 기능을 개선한 버전입니다.")
 st.divider()
 
 # Input Section
@@ -270,7 +277,7 @@ if st.session_state['gdd_result']:
     
     imgs = st.session_state['generated_images']
     
-    # 이미지 너비를 800px로 고정하고 중앙 정렬 처리
+    # 이미지 너비를 800px로 고정
     if imgs.get("concept"):
         st.image(base64.b64decode(imgs["concept"]), width=800)
         st.markdown('<p class="img-caption">[Main Concept Art]</p>', unsafe_allow_html=True)
@@ -282,7 +289,7 @@ if st.session_state['gdd_result']:
         sec_text = "## " + section if i > 0 else section
         st.markdown(sec_text) 
         
-        # Insert images between sections with 800px fixed width
+        # 중간 이미지 삽입 (800px 고정)
         if i == 1 and imgs.get("world"):
             st.image(base64.b64decode(imgs["world"]), width=800)
             st.markdown('<p class="img-caption">[World & Environment]</p>', unsafe_allow_html=True)
@@ -301,7 +308,8 @@ if st.session_state['gdd_result']:
     
     with col1:
         if st.button("📄 PDF로 저장 / 인쇄하기 (추천 - 빠름)", use_container_width=True):
-            components.html("<script>window.print();</script>", height=0)
+            # window.parent.print()를 사용하여 부모창 전체(기획서 영역 포함)를 인쇄 대상으로 설정
+            components.html("<script>window.parent.print();</script>", height=0)
             st.info("💡 인쇄창이 뜨면 'PDF로 저장'을 선택해 주세요.")
 
     with col2:
@@ -332,4 +340,4 @@ if st.session_state['gdd_result']:
             """, height=0)
             st.success("이미지 생성을 시작했습니다. 완료 후 자동으로 다운로드됩니다!")
 
-st.caption("비토쨩 GDD Pro | Multi-Format Export Support")
+st.caption("비토쨩 GDD Pro | Reliable Multi-Format Export")
