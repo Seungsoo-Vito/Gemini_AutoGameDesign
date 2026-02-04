@@ -8,15 +8,15 @@ import re
 import os.path
 import streamlit.components.v1 as components
 
-# 1. 페이지 설정
+# 1. Page Configuration
 st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
 
-# --- 🎨 고품격 UI & 폰트 스타일링 ---
+# --- 🎨 High-End UI & Font Styling ---
 st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     
-    /* 전체 앱 기본 폰트 */
+    /* Global Font Settings */
     .stApp { 
         background-color: #f8fafc; 
         color: #1e293b; 
@@ -38,11 +38,11 @@ st.markdown("""
         margin-bottom: 1rem !important;
     }
     
-    /* 📸 이미지로 캡처될 영역의 고품격 디자인 */
+    /* 📸 Capture Area Design */
     #gdd-capture-area {
         background: #ffffff;
         padding: 80px 60px;
-        border-radius: 0px; /* 이미지 저장 시 깔끔한 직각형 */
+        border-radius: 0px; 
         color: #1e293b;
         line-height: 1.8;
         font-family: 'Pretendard', sans-serif;
@@ -104,20 +104,18 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* 이미지 스타일 */
+    /* Image Styling */
     .gdd-img-container {
-        margin: 40px 0;
+        margin: 40px auto;
         text-align: center;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        max-width: 800px;
     }
     
     .img-caption {
         font-size: 0.9rem;
         color: #94a3b8;
         text-align: center;
-        margin-top: -30px;
+        margin-top: 5px;
         margin-bottom: 40px;
         font-weight: 500;
     }
@@ -134,10 +132,32 @@ st.markdown("""
         padding: 12px;
         margin-bottom: 10px;
     }
+
+    /* 🖨️ Print Styles (Optimized for PDF) */
+    @media print {
+        [data-testid="stSidebar"], .main-title, footer, header, .stButton, hr, .stMarkdown:not(#gdd-capture-area *) {
+            display: none !important;
+        }
+        
+        #gdd-capture-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        
+        .stApp { background: white !important; }
+        .stImage, img, h1, h2, h3 { page-break-inside: avoid; }
+        body { background-color: white !important; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔒 API 키 보안 관리 ---
+# --- 🔒 API Key Security Management ---
 def load_api_key():
     possible_keys = ["GEMINI_API_KEY", "gemini_api_key", "API_KEY", "api_key"]
     for k in possible_keys:
@@ -157,7 +177,7 @@ with st.sidebar:
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# --- 🎨 지능형 이미지 생성 엔진 ---
+# --- 🎨 Intelligent Image Generation Engine ---
 def generate_specialized_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     
@@ -178,12 +198,12 @@ def generate_specialized_image(prompt_type, genre, art, key):
     except:
         return None
 
-# 세션 상태 관리
+# Session State Management
 if 'gdd_result' not in st.session_state: st.session_state['gdd_result'] = None
 if 'generated_images' not in st.session_state: st.session_state['generated_images'] = {}
 if 'history' not in st.session_state: st.session_state['history'] = []
 
-# --- 3. UI 사이드바 ---
+# --- 3. UI Sidebar ---
 with st.sidebar:
     st.divider()
     st.header("🕒 히스토리")
@@ -196,12 +216,12 @@ with st.sidebar:
         st.session_state['history'] = []
         st.rerun()
 
-# --- 4. UI 메인 ---
+# --- 4. UI Main ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro 🎮</h1>', unsafe_allow_html=True)
-st.write("가독성과 폰트가 개선된 고품격 게임 기획서 생성기입니다.")
+st.write("이미지 크기를 최적화한 고품격 게임 기획서 생성기입니다.")
 st.divider()
 
-# 입력 섹션
+# Input Section
 with st.container():
     c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
     with c1: genre = st.selectbox("장르", ["방치형 RPG", "수집형 RPG", "오픈월드", "로그라이크", "액션"])
@@ -216,9 +236,8 @@ with st.container():
         elif not key:
             st.warning("키워드를 입력해 주세요.")
         else:
-            with st.spinner("AI가 가독성을 최우선으로 기획서를 작성 중입니다..."):
+            with st.spinner("AI가 기획서를 작성 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
-                # 폰트 깨짐 방지를 위해 명확한 마크다운 구조 지시
                 prompt = f"""
                 당신은 전설적인 게임 기획자입니다.
                 다음 조건으로 게임 디자인 문서(GDD)를 작성하세요: 장르={genre}, 국가={target}, 키워드={key}, 아트={art}.
@@ -232,7 +251,7 @@ with st.container():
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
                 
-                # 이미지 생성
+                # Image Generation
                 imgs = {}
                 imgs["concept"] = generate_specialized_image("concept", genre, art, key)
                 imgs["ui"] = generate_specialized_image("ui", genre, art, key)
@@ -241,71 +260,76 @@ with st.container():
                 st.session_state['generated_images'] = imgs
                 st.session_state['history'].append({"key": key, "content": gdd_res.text})
 
-# 결과 출력
+# Result Display
 if st.session_state['gdd_result']:
     st.divider()
     
-    # 📸 캡처 영역 시작
-    # 마크다운 렌더링을 캡처 영역 안에 포함시키기 위해 HTML/Markdown 혼합 처리
+    # 📸 GDD Content Area
     st.markdown('<div id="gdd-capture-area">', unsafe_allow_html=True)
-    
     st.markdown(f"<h1>{key.upper()} 기획서</h1>", unsafe_allow_html=True)
     
     imgs = st.session_state['generated_images']
+    
+    # 이미지 너비를 800px로 고정하고 중앙 정렬 처리
     if imgs.get("concept"):
-        st.image(base64.b64decode(imgs["concept"]), use_container_width=True)
+        st.image(base64.b64decode(imgs["concept"]), width=800)
         st.markdown('<p class="img-caption">[Main Concept Art]</p>', unsafe_allow_html=True)
 
-    # 본문을 섹션별로 나누어 이미지와 함께 렌더링
     content = st.session_state['gdd_result']
-    # 텍스트 내의 마크다운이 제대로 렌더링되도록 st.markdown을 사용하되, 캡처 영역 내부에 위치하게 함
-    
     sections = content.split("## ")
     for i, section in enumerate(sections):
         if not section.strip(): continue
         sec_text = "## " + section if i > 0 else section
-        st.markdown(sec_text) # Streamlit이 캡처 영역 DOM 내부에 렌더링하도록 함
+        st.markdown(sec_text) 
         
-        # 중간 이미지 삽입 로직
+        # Insert images between sections with 800px fixed width
         if i == 1 and imgs.get("world"):
-            st.image(base64.b64decode(imgs["world"]), use_container_width=True)
+            st.image(base64.b64decode(imgs["world"]), width=800)
             st.markdown('<p class="img-caption">[World & Environment]</p>', unsafe_allow_html=True)
         elif i == 3 and imgs.get("ui"):
-            st.image(base64.b64decode(imgs["ui"]), use_container_width=True)
+            st.image(base64.b64decode(imgs["ui"]), width=800)
             st.markdown('<p class="img-caption">[UI/UX Mockup]</p>', unsafe_allow_html=True)
         elif i == 5 and imgs.get("asset"):
-            st.image(base64.b64decode(imgs["asset"]), use_container_width=True)
+            st.image(base64.b64decode(imgs["asset"]), width=800)
             st.markdown('<p class="img-caption">[Character & Assets]</p>', unsafe_allow_html=True)
             
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 📥 이미지 다운로드 버튼
+    # 📥 Download Buttons
     st.write("---")
-    if st.button("🖼️ 고화질 기획서 이미지로 저장하기", use_container_width=True):
-        components.html(f"""
-            <script>
-            (function() {{
-                const script = document.createElement('script');
-                script.src = "https://html2canvas.hertzen.com/dist/html2canvas.min.js";
-                script.onload = function() {{
-                    const area = window.parent.document.getElementById('gdd-capture-area');
-                    html2canvas(area, {{
-                        useCORS: true,
-                        scale: 3, /* 해상도 대폭 강화 */
-                        backgroundColor: "#ffffff",
-                        windowWidth: area.scrollWidth,
-                        windowHeight: area.scrollHeight
-                    }}).then(canvas => {{
-                        const link = document.createElement('a');
-                        link.download = 'Vito_GDD_Report_{key}.png';
-                        link.href = canvas.toDataURL('image/png');
-                        link.click();
-                    }});
-                }};
-                document.head.appendChild(script);
-            }})();
-            </script>
-        """, height=0)
-        st.success("고화질 이미지 생성을 시작했습니다. 완료 후 자동으로 다운로드됩니다!")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📄 PDF로 저장 / 인쇄하기 (추천 - 빠름)", use_container_width=True):
+            components.html("<script>window.print();</script>", height=0)
+            st.info("💡 인쇄창이 뜨면 'PDF로 저장'을 선택해 주세요.")
 
-st.caption("비토쨩 GDD Pro | Typography & Visibility Improved")
+    with col2:
+        if st.button("🖼️ 고화질 이미지(PNG)로 저장하기", use_container_width=True):
+            components.html(f"""
+                <script>
+                (function() {{
+                    const script = document.createElement('script');
+                    script.src = "https://html2canvas.hertzen.com/dist/html2canvas.min.js";
+                    script.onload = function() {{
+                        const area = window.parent.document.getElementById('gdd-capture-area');
+                        html2canvas(area, {{
+                            useCORS: true,
+                            scale: 2,
+                            backgroundColor: "#ffffff",
+                            windowWidth: area.scrollWidth,
+                            windowHeight: area.scrollHeight
+                        }}).then(canvas => {{
+                            const link = document.createElement('a');
+                            link.download = 'Vito_GDD_Report_{key}.png';
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                        }});
+                    }};
+                    document.head.appendChild(script);
+                }})();
+                </script>
+            """, height=0)
+            st.success("이미지 생성을 시작했습니다. 완료 후 자동으로 다운로드됩니다!")
+
+st.caption("비토쨩 GDD Pro | Multi-Format Export Support")
