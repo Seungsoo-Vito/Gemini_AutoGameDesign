@@ -120,7 +120,7 @@ with st.sidebar:
 
 # --- 4. UI Main ---
 st.markdown('<h1 class="main-title">비토쨩 자동 기획서 만들기 🎮</h1>', unsafe_allow_html=True)
-st.write("제미나이를 활용한 연습. (주요 카테고리 중심의 선택적 이미지 배치)")
+st.write("제미나이를 활용한 연습.")
 st.divider()
 
 # Input Options
@@ -142,7 +142,7 @@ with st.container():
         else:
             with st.spinner("시니어 기획자가 핵심 섹션을 설계하고 아트를 생성 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
-                prompt = f"당신은 전설적인 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 상세 GDD를 작성하세요. 핵심 시스템, 콘텐츠 순환, UI/UX 전략을 매우 전문적으로 다루되 섹션 사이의 불필요한 '#' 기호는 제거하세요."
+                prompt = f"당신은 전설적인 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 전문적인 상세 GDD를 작성하세요. 핵심 시스템, 콘텐츠 순환, UI/UX 전략을 매우 전문적으로 다루되 섹션 사이의 불필요한 '#' 기호는 제거하세요."
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
                 
@@ -156,7 +156,7 @@ with st.container():
                 st.session_state['generated_images'] = imgs
                 st.session_state['history'].append({"key": key, "content": gdd_res.text, "images": imgs})
 
-# --- 5. Result Display & Export Engine (정밀 렌더링 시스템) ---
+# --- 5. Result Display & Export Engine (SyntaxError 방지를 위한 정밀 설계) ---
 if st.session_state['gdd_result']:
     st.divider()
     
@@ -166,90 +166,94 @@ if st.session_state['gdd_result']:
         "images": st.session_state['generated_images']
     }
     
-    # f-string 중괄호 에러 해결을 위해 모든 자바스크립트 중괄호를 {{ }}로 변경
-    components.html(f"""
-        <div id="render-target"></div>
-        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-        <script>
-            const data = {json.dumps(export_payload)};
+    # 중괄호 에러 원천 봉쇄: f-string을 쓰지 않고 일반 문자열 템플릿 사용
+    html_template = """
+    <div id="render-target"></div>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+        const data = ST_DATA_JSON;
+        
+        function cleanMd(md) {
+            return md
+                .replace(/^#\s*$/gm, '')
+                .replace(/^### (.*$)/gim, '<h3 style="font-size:26px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2 style="font-size:34px; font-weight:800; color:#4f46e5; border-left:15px solid #4f46e5; padding:15px 30px; background:#f8fafc; margin-top:70px; border-radius:0 15px 15px 0;">$1</h2>')
+                .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+                .replace(/^\\* (.*$)/gim, '<li style="margin-bottom:15px; font-size:20px; color:#475569;">$1</li>')
+                .replace(/\\n/g, '<br>')
+                .replace(/(<li>.*<\\/li>)/s, '<ul style="padding-left:40px; margin-bottom:40px;">$1</ul>');
+        }
+
+        function buildHTML(data) {
+            let html = `<div id="export-area" style="background:white; padding:100px 80px; border-radius:24px; font-family:'Pretendard', sans-serif; color:#1e293b; line-height:1.9; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 20px 50px rgba(0,0,0,0.08);">`;
+            html += `<h1 style="font-size:64px; font-weight:900; text-align:center; border-bottom:12px solid #4f46e5; padding-bottom:30px; margin-bottom:60px; letter-spacing:-0.04em;">${data.title}</h1>`;
             
-            function cleanMd(md) {{
-                return md
-                    .replace(/^#\s*$/gm, '')
-                    .replace(/^### (.*$)/gim, '<h3 style="font-size:26px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">$1</h3>')
-                    .replace(/^## (.*$)/gim, '<h2 style="font-size:34px; font-weight:800; color:#4f46e5; border-left:15px solid #4f46e5; padding:15px 30px; background:#f8fafc; margin-top:70px; border-radius:0 15px 15px 0;">$1</h2>')
-                    .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-                    .replace(/^\\* (.*$)/gim, '<li style="margin-bottom:15px; font-size:20px; color:#475569;">$1</li>')
-                    .replace(/\\n/g, '<br>')
-                    .replace(/(<li>.*<\\/li>)/s, '<ul style="padding-left:40px; margin-bottom:40px;">$1</ul>');
-            }}
+            // 1. [메인 비주얼]
+            if(data.images.concept) {
+                html += `<div style="text-align:center; margin-bottom:80px;"><img src="data:image/png;base64,${data.images.concept}" style="max-width:1000px; width:100%; border-radius:20px; box-shadow:0 15px 40px rgba(0,0,0,0.15);"><div style="color:#64748b; font-size:18px; margin-top:20px; font-style:italic; font-weight:600;">[Key Concept Architecture]</div></div>`;
+            }
+            
+            const sections = data.content.split('## ');
+            let usedKeys = new Set();
+            const imgMap = {
+                "world": ["세계관", "배경", "아트", "분위기"],
+                "ui": ["시스템", "UI", "인터페이스", "화면", "메커니즘"],
+                "character": ["캐릭터", "에셋", "유닛", "영웅", "몬스터"]
+            };
 
-            function buildHTML(data) {{
-                let html = `<div id="export-area" style="background:white; padding:100px 80px; border-radius:24px; font-family:'Pretendard', sans-serif; color:#1e293b; line-height:1.9; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 20px 50px rgba(0,0,0,0.08);">`;
-                html += `<h1 style="font-size:64px; font-weight:900; text-align:center; border-bottom:12px solid #4f46e5; padding-bottom:30px; margin-bottom:60px; letter-spacing:-0.04em;">${{data.title}}</h1>`;
+            sections.forEach((sec, i) => {
+                if(!sec.trim()) return;
+                let title = sec.split('\\n')[0];
+                html += cleanMd((i > 0 ? '## ' : '') + sec);
                 
-                if(data.images.concept) {{
-                    html += `<div style="text-align:center; margin-bottom:80px;"><img src="data:image/png;base64,${{data.images.concept}}" style="max-width:1000px; width:100%; border-radius:20px; box-shadow:0 15px 40px rgba(0,0,0,0.15);"><div style="color:#64748b; font-size:18px; margin-top:20px; font-style:italic; font-weight:600;">[Key Concept Architecture]</div></div>`;
-                }}
-                
-                const sections = data.content.split('## ');
-                let usedKeys = new Set();
-
-                const imgMap = {{
-                    "world": ["세계관", "배경", "아트", "분위기"],
-                    "ui": ["시스템", "UI", "인터페이스", "화면", "메커니즘"],
-                    "character": ["캐릭터", "에셋", "유닛", "영웅", "몬스터"]
-                }};
-
-                sections.forEach((sec, i) => {{
-                    if(!sec.trim()) return;
-                    let title = sec.split('\\n')[0];
-                    html += cleanMd((i > 0 ? '## ' : '') + sec);
-                    
-                    for(let key in imgMap) {{
-                        if(!usedKeys.has(key)) {{
-                            if(imgMap[key].some(kw => title.includes(kw)) && data.images[key]) {{
-                                const label = key === 'world' ? 'World View' : (key === 'ui' ? 'UI Mockup' : 'Character Asset');
-                                html += `<div style="text-align:center; margin:60px 0;"><img src="data:image/png;base64,${{data.images[key]}}" style="max-width:1000px; width:100%; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1);"><div style="color:#64748b; font-size:16px; margin-top:15px; font-weight:600;">[Design Reference: ${{label}}]</div></div>`;
-                                usedKeys.add(key);
-                                break;
-                            }}
+                for(let key in imgMap) {
+                    if(!usedKeys.has(key)) {
+                        if(imgMap[key].some(kw => title.includes(kw)) && data.images[key]) {
+                            const label = key === 'world' ? 'World View' : (key === 'ui' ? 'UI Mockup' : 'Character Asset');
+                            html += `<div style="text-align:center; margin:60px 0;"><img src="data:image/png;base64,${data.images[key]}" style="max-width:1000px; width:100%; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1);"><div style="color:#64748b; font-size:16px; margin-top:15px; font-weight:600;">[Design Reference: ${label}]</div></div>`;
+                            usedKeys.add(key);
+                            break;
                         }
                     }
-                }});
-                
-                html += `</div>`;
-                return html;
-            }}
+                }
+            });
+            
+            html += `</div>`;
+            return html;
+        }
 
-            const target = document.getElementById('render-target');
-            target.innerHTML = `
-                <div style="display:flex; gap:25px; margin-bottom:50px; max-width:1200px; margin-left:auto; margin-right:auto;">
-                    <button id="pdfBtn" style="flex:1; background:#4f46e5; color:white; border:none; padding:25px; border-radius:16px; font-weight:900; cursor:pointer; font-size:20px; box-shadow:0 10px 25px rgba(79,70,229,0.3);">📄 PDF로 저장</button>
-                    <button id="pngBtn" style="flex:1; background:#7c3aed; color:white; border:none; padding:25px; border-radius:16px; font-weight:900; cursor:pointer; font-size:20px; box-shadow:0 10px 25px rgba(124,58,237,0.3);">🖼️ 이미지 저장</button>
-                </div>
-                <div id="preview-box">\${{buildHTML(data)}}</div>
-            `;
+        const target = document.getElementById('render-target');
+        target.innerHTML = `
+            <div style="display:flex; gap:25px; margin-bottom:50px; max-width:1200px; margin-left:auto; margin-right:auto;">
+                <button id="pdfBtn" style="flex:1; background:#4f46e5; color:white; border:none; padding:25px; border-radius:16px; font-weight:900; cursor:pointer; font-size:20px; box-shadow:0 10px 25px rgba(79,70,229,0.3);">📄 PDF로 저장</button>
+                <button id="pngBtn" style="flex:1; background:#7c3aed; color:white; border:none; padding:25px; border-radius:16px; font-weight:900; cursor:pointer; font-size:20px; box-shadow:0 10px 25px rgba(124,58,237,0.3);">🖼️ 이미지 저장</button>
+            </div>
+            <div id="preview-box">${buildHTML(data)}</div>
+        `;
 
-            document.getElementById('pdfBtn').onclick = () => {{
-                const win = window.open('', '_blank');
-                win.document.write('<html><head><meta charset="UTF-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"></head><body style="margin:0; background:#f1f5f9;">' + document.getElementById('export-area').outerHTML + '</body></html>');
-                win.document.close();
-                win.onload = () => setTimeout(() => {{ win.focus(); win.print(); }}, 1000);
-            }};
+        document.getElementById('pdfBtn').onclick = () => {
+            const win = window.open('', '_blank');
+            win.document.write('<html><head><meta charset="UTF-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"></head><body style="margin:0; background:#f1f5f9;">' + document.getElementById('export-area').outerHTML + '</body></html>');
+            win.document.close();
+            win.onload = () => setTimeout(() => { win.focus(); win.print(); }, 1000);
+        };
 
-            document.getElementById('pngBtn').onclick = () => {{
-                const btn = document.getElementById('pngBtn');
-                btn.innerText = "⏳ 렌더링 중...";
-                html2canvas(document.getElementById('export-area'), {{ useCORS: true, scale: 2 }}).then(canvas => {{
-                    const a = document.createElement('a');
-                    a.download = `GDD_\${{data.title}}.png`;
-                    a.href = canvas.toDataURL('image/png');
-                    a.click();
-                    btn.innerText = "🖼️ 이미지 저장";
-                }});
-            }};
-        </script>
-    """, height=4000, scrolling=True)
+        document.getElementById('pngBtn').onclick = () => {
+            const btn = document.getElementById('pngBtn');
+            btn.innerText = "⏳ 렌더링 중...";
+            html2canvas(document.getElementById('export-area'), { useCORS: true, scale: 2 }).then(canvas => {
+                const a = document.createElement('a');
+                a.download = `VitoGDD_${data.title}.png`;
+                a.href = canvas.toDataURL('image/png');
+                a.click();
+                btn.innerText = "🖼️ 이미지 저장";
+            });
+        };
+    </script>
+    """
+    
+    # 💡 ST_DATA_JSON 부분을 실제 데이터로 교체 (f-string 사용 안함)
+    final_html = html_template.replace("ST_DATA_JSON", json.dumps(export_payload))
+    components.html(final_html, height=4000, scrolling=True)
 
 st.caption("비토쨩 연습하기")
