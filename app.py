@@ -161,4 +161,4 @@ if st.session_state['gdd_result']:
         elif "UI/UX" in section:
             st.image(REFERENCE_IMAGES["UI/UX"], caption="레퍼런스: 인터페이스 및 사용자 경험 설계", width=700)
 
-st.caption("비토쨩이 테스트로 만들었단다. © 2026 Game PM AI Assistant")
+st.caption("비토쨩이 테스트로 만들었단다.")
