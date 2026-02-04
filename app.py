@@ -9,7 +9,7 @@ import os.path
 import streamlit.components.v1 as components
 
 # 1. Page Configuration
-st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
+st.set_page_config(page_title="비토쨩 자동 기획서 연습", page_icon="🎮", layout="wide")
 
 # --- 🎨 프리미엄 에디토리얼 UI 스타일링 ---
 st.markdown("""
@@ -154,20 +154,37 @@ st.markdown('<h1 class="main-title">비토쨩 자동 기획서 만들기 🎮</h
 st.write("제미나이를 활용한 연습.")
 st.divider()
 
-# Input Section
+# Input Section (확장된 옵션 리스트)
+genres = [
+    "방치형 RPG", "수집형 RPG", "액션 RPG", "MMORPG", "오픈월드 액션", 
+    "로그라이크", "FPS/TPS", "전략 시뮬레이션", "스포츠/레이싱", 
+    "공포/호러", "퍼즐/매치3", "비주얼 노벨", "TCG/CCG", "MOBA"
+]
+
+targets = [
+    "글로벌", "한국", "일본", "중국", "북미", "유럽", 
+    "동남아시아", "대만/홍콩/마카오", "남미/라틴아메리카"
+]
+
+styles = [
+    "픽셀 아트 (Retro)", "2D 카툰/애니메이션", "실사풍 (Photorealistic)", 
+    "3D 캐주얼/로우 폴리", "사이버펑크", "스팀펑크", "중세 판타지", 
+    "다크 판타지", "현대/어반", "SF/스페이스 오페라", "수묵화/동양풍"
+]
+
 with st.container():
     c1, c2 = st.columns(2)
-    with c1: genre = st.selectbox("장르", ["방치형 RPG", "수집형 RPG", "오픈월드", "로그라이크", "액션"])
-    with c2: target = st.selectbox("타겟 국가", ["글로벌", "한국", "일본", "북미/유럽"])
+    with c1: genre = st.selectbox("장르 선택", genres)
+    with c2: target = st.selectbox("타겟 국가/시장", targets)
     c3, c4 = st.columns(2)
-    with c3: art = st.selectbox("스타일", ["픽셀 아트", "2D 카툰", "실사풍", "3D 캐주얼"])
-    with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프")
+    with c3: art = st.selectbox("아트 스타일", styles)
+    with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프, 지하철")
     
-    if st.button("기획서 생성 및 이미지 생성 ✨", type="primary", use_container_width=True):
+    if st.button("자동 기획서 생성 시작 ✨", type="primary", use_container_width=True):
         if not API_KEY: st.error("API 키를 입력해 주세요.")
         elif not key: st.warning("키워드를 입력해 주세요.")
         else:
-            with st.spinner("최고의 시니어 기획자가 기획서를 작성 중입니다..."):
+            with st.spinner("시니어 게임 기획자가 기획서를 작성 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
                 prompt = f"""
                 당신은 전설적인 게임 기획자입니다.
@@ -177,7 +194,7 @@ with st.container():
                 1. ## 섹션 제목, ### 소제목 형식을 엄격히 지키세요.
                 2. 각 항목은 마크다운 불렛(*)을 사용하세요.
                 3. **강조 텍스트**를 적절히 섞어 가독성을 높이세요.
-                4. 시스템 수치나 운영 전략을 구체적으로 포함하세요.
+                4. 해당 장르와 타겟 국가의 시장 특성을 반영한 BM과 운영 전략을 포함하세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
@@ -255,7 +272,6 @@ if st.session_state['gdd_result']:
         <script>
             const data = {json.dumps(export_data)};
             
-            // 🚀 정교한 마크다운 HTML 파서
             function cleanMd(md) {{
                 return md
                     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
