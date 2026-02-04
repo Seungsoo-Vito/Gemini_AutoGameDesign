@@ -3,7 +3,6 @@ import google.generativeai as genai
 import requests
 import base64
 import json
-import zlib
 import io
 import re
 import os.path
@@ -30,71 +29,72 @@ st.markdown("""
         margin-bottom: 0.5rem !important;
     }
     
+    /* 📸 캡처 영역 디자인 */
     #gdd-capture-area {
         background: #ffffff;
-        padding: 50px;
-        border-radius: 24px;
-        border: 1px solid #f1f3f5;
-        box-shadow: 0 12px 24px rgba(0,0,0,0.05);
-        color: #2d3436;
+        padding: 60px;
+        border-radius: 30px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.05);
+        color: #1e293b;
+        margin-top: 20px;
     }
     
-    .gdd-card {
-        background: #ffffff;
-        padding: 20px;
-        margin-bottom: 20px;
+    .gdd-section {
+        background: #f8fafc;
+        padding: 30px;
+        border-radius: 20px;
+        margin-bottom: 25px;
+        border: 1px solid #f1f5f9;
     }
 
-    .gdd-card h1, .gdd-card h2, .gdd-card h3 {
-        color: #1f2937 !important;
-        border-bottom: 3px solid #e0e7ff;
-        display: inline-block;
-        padding-bottom: 4px;
-        margin-top: 30px;
+    .gdd-section h2, .gdd-section h3 {
+        color: #4f46e5 !important;
+        margin-top: 0;
+        border-left: 6px solid #6366f1;
+        padding-left: 15px;
     }
 
     div.stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-        color: white; border: none; border-radius: 14px; font-weight: 700; height: 3.5rem;
-        transition: all 0.3s;
+        color: white; border: none; border-radius: 16px; font-weight: 700; height: 3.8rem;
     }
     
-    div.stButton > button[kind="primary"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 15px rgba(99, 102, 241, 0.3);
-    }
-
     .history-item {
         background: #ffffff;
-        border: 1px solid #e9ecef;
-        border-radius: 14px;
-        padding: 15px;
-        margin-bottom: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
     }
     
     .img-caption {
-        font-size: 0.9rem;
-        color: #64748b;
+        font-size: 0.95rem;
+        color: #94a3b8;
         text-align: center;
+        margin-top: 10px;
         margin-bottom: 30px;
-        font-style: italic;
+        font-weight: 500;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 🔒 API 키 보안 관리 ---
-# 1순위: st.secrets에서 가져오기 (배포/설정용)
-# 2순위: 사이드바에서 직접 입력받기
-API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+def load_api_key():
+    possible_keys = ["GEMINI_API_KEY", "gemini_api_key", "API_KEY", "api_key"]
+    for k in possible_keys:
+        if k in st.secrets:
+            return st.secrets[k]
+    return ""
+
+API_KEY = load_api_key()
 
 with st.sidebar:
     st.header("🔑 보안 설정")
     if not API_KEY:
-        API_KEY = st.text_input("Gemini API Key를 입력하세요", type="password", help="키는 코드에 저장되지 않으며 세션 동안만 유지됩니다.")
-        if API_KEY:
-            st.success("API 키가 설정되었습니다.")
+        API_KEY = st.text_input("Gemini API Key를 입력하세요", type="password")
     else:
-        st.info("✅ 보안 설정(Secrets)에서 API 키를 불러왔습니다.")
+        st.info("✅ 클라우드 설정에서 API 키를 불러왔습니다.")
 
 if API_KEY:
     genai.configure(api_key=API_KEY)
@@ -104,10 +104,10 @@ def generate_specialized_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     
     prompts = {
-        "concept": f"Main key visual art for a {genre} game, theme of {key}, {art} style. Cinematic composition, high quality, epic scale.",
-        "ui": f"Game UI and UX design for {genre} mobile game, {art} style. Inventory screen and HUD, clean layout, matching {key} theme. High fidelity mockup.",
-        "world": f"Environment concept art, world map or background for {genre} game, {art} style, location: {key}. Immersive atmosphere, 8k resolution.",
-        "character": f"Character design sheet or detailed game asset for {genre}, {art} style, based on {key}. Front view, professional game art."
+        "concept": f"Main key visual art for a {genre} game, theme of {key}, {art} style. Epic cinematic lighting.",
+        "ui": f"High fidelity game UI/UX design for {genre} mobile game, {art} style. Dashboard and menus.",
+        "world": f"Beautiful environment concept art for {genre} game, world of {key}, {art} style.",
+        "character": f"Detailed character design sheet for {genre}, {art} style, {key} theme."
     }
     
     selected_prompt = prompts.get(prompt_type, prompts["concept"])
@@ -136,33 +136,16 @@ with st.sidebar:
         for i in range(len(st.session_state['history']) - 1, -1, -1):
             item = st.session_state['history'][i]
             display_name = item.get('custom_name') or f"{item['key']}"
-            
             st.markdown(f'<div class="history-item">', unsafe_allow_html=True)
-            col_main, col_tools = st.columns([4, 1])
-            if col_main.button(f"📄 {display_name[:12]}", key=f"hist_load_{i}", use_container_width=True):
+            if st.button(f"📄 {display_name[:12]}", key=f"hist_load_{i}", use_container_width=True):
                 st.session_state['gdd_result'] = item['content']
                 st.session_state['generated_images'] = item.get('images', {})
-                st.session_state['editing_index'] = -1
-
-            if col_tools.button("✏️", key=f"hist_edit_{i}", use_container_width=True):
-                st.session_state['editing_index'] = i
-            
-            if st.session_state['editing_index'] == i:
-                new_name = st.text_input("이름 변경", value=display_name, key=f"hist_name_{i}")
-                if st.button("저장", key=f"hist_save_{i}", use_container_width=True):
-                    st.session_state['history'][i]['custom_name'] = new_name
-                    st.session_state['editing_index'] = -1
-                    st.rerun()
+                st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.button("전체 기록 삭제", use_container_width=True):
-        st.session_state['history'] = []
-        st.session_state['gdd_result'] = None
-        st.rerun()
 
 # --- 4. UI 메인 ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro</h1>', unsafe_allow_html=True)
-st.write("안전한 API 관리 모드가 적용되었습니다. 기획서를 이미지로 다운로드하세요.")
+st.write("이미지 다운로드 기능이 강화된 고품격 AI 게임 기획 도구")
 st.divider()
 
 # 입력 섹션
@@ -177,98 +160,87 @@ with st.container():
     st.write("")
     if st.button("전문 기획서 생성 및 아트 빌드 ✨", type="primary", use_container_width=True):
         if not API_KEY:
-            st.error("사이드바에 API 키를 입력해 주세요.")
+            st.error("API 키를 입력해 주세요.")
         elif not key:
             st.warning("키워드를 입력해 주세요.")
         else:
-            with st.spinner("비토쨩이 안전하게 데이터를 처리 중입니다..."):
+            with st.spinner("비토쨩이 최고의 기획서와 아트를 생성 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
-                
-                # 1. GDD 본문 생성
-                gdd_res = model.generate_content(f"장르: {genre}, 국가: {target}, 키워드: {key}, 아트: {art} 전문 GDD 작성.")
+                gdd_res = model.generate_content(f"장르: {genre}, 국가: {target}, 키워드: {key}, 아트: {art} 조건으로 시니어 게임 기획자로서 전문 GDD 작성.")
                 st.session_state['gdd_result'] = gdd_res.text
                 
-                # 2. 이미지 생성
                 imgs = {}
                 imgs["concept"] = generate_specialized_image("concept", genre, art, key)
                 imgs["ui"] = generate_specialized_image("ui", genre, art, key)
                 imgs["world"] = generate_specialized_image("world", genre, art, key)
                 imgs["asset"] = generate_specialized_image("character", genre, art, key)
                 st.session_state['generated_images'] = imgs
+                st.session_state['history'].append({"key": key, "content": gdd_res.text, "images": imgs})
 
-                # 3. 히스토리 저장
-                st.session_state['history'].append({
-                    "key": key, "content": gdd_res.text, "images": imgs, "custom_name": None
-                })
-
-# 결과 출력 및 이미지 다운로드 로직
+# 결과 출력
 if st.session_state['gdd_result']:
     st.divider()
     
-    components.html("""
-        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-        <script>
-        function downloadGDDImage() {
-            const area = window.parent.document.getElementById('gdd-capture-area');
-            html2canvas(area, {
-                useCORS: true,
-                scale: 2,
-                backgroundColor: "#ffffff"
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'Vito_GDD_Report.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        }
-        </script>
-    """, height=0)
-
-    # 📸 기획서 본문 영역
+    # 📸 기획서 본문 영역 (캡처 대상)
     st.markdown('<div id="gdd-capture-area">', unsafe_allow_html=True)
-    st.markdown(f"<h1 style='text-align:center;'>GAME DESIGN DOCUMENT: {key}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align:center; color:#64748b;'>Powered by Vito-chan GDD Pro | Secure Mode</p><br>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align:center; font-size: 50px;'>GAME DESIGN DOCUMENT</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='text-align:center; color:#6366f1;'>{key.upper()}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:center; color:#94a3b8;'>Produced by Vito-chan GDD Pro AI</p><br>", unsafe_allow_html=True)
     
     imgs = st.session_state['generated_images']
-    
     if imgs.get("concept"):
         st.image(base64.b64decode(imgs["concept"]), use_container_width=True)
-        st.markdown('<p class="img-caption">[Main Concept Visual]</p>', unsafe_allow_html=True)
+        st.markdown('<p class="img-caption">[Main Concept Art]</p>', unsafe_allow_html=True)
 
     parts = st.session_state['gdd_result'].split("\n\n")
     for i, part in enumerate(parts):
-        st.markdown(f'<div class="gdd-card">{part}</div>', unsafe_allow_html=True)
-        
+        st.markdown(f'<div class="gdd-section">{part}</div>', unsafe_allow_html=True)
         if i == 1 and imgs.get("world"):
-            st.image(base64.b64decode(imgs["world"]), width=800)
-            st.markdown('<p class="img-caption">[World Reference]</p>', unsafe_allow_html=True)
+            st.image(base64.b64decode(imgs["world"]), use_container_width=True)
+            st.markdown('<p class="img-caption">[World & Environment]</p>', unsafe_allow_html=True)
         elif ("시스템" in part or "UI" in part) and imgs.get("ui"):
-            st.image(base64.b64decode(imgs["ui"]), width=800)
-            st.markdown('<p class="img-caption">[UI/UX Mockup]</p>', unsafe_allow_html=True)
+            st.image(base64.b64decode(imgs["ui"]), use_container_width=True)
+            st.markdown('<p class="img-caption">[Game UI/UX Mockup]</p>', unsafe_allow_html=True)
         elif ("캐릭터" in part or "전투" in part) and imgs.get("asset"):
-            st.image(base64.b64decode(imgs["asset"]), width=800)
-            st.markdown('<p class="img-caption">[Character & Asset Concept]</p>', unsafe_allow_html=True)
+            st.image(base64.b64decode(imgs["asset"]), use_container_width=True)
+            st.markdown('<p class="img-caption">[Hero & Asset Design]</p>', unsafe_allow_html=True)
             
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 📥 이미지 다운로드 버튼
     st.write("---")
-    if st.button("🖼️ 완성된 기획서를 이미지로 다운받기", type="secondary", use_container_width=True):
-        components.html("""
-            <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    if st.button("🖼️ 완성된 기획서를 이미지로 다운받기", use_container_width=True):
+        # 자바스크립트 실행 (보안 및 로드 타이밍 강화)
+        components.html(f"""
             <script>
-                const area = window.parent.document.getElementById('gdd-capture-area');
-                html2canvas(area, {
-                    useCORS: true,
-                    scale: 2,
-                    backgroundColor: "#ffffff"
-                }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = 'Game_GDD_Report.png';
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                });
+            (function() {{
+                const script = document.createElement('script');
+                script.src = "https://html2canvas.hertzen.com/dist/html2canvas.min.js";
+                script.onload = function() {{
+                    const area = window.parent.document.getElementById('gdd-capture-area');
+                    if (!area) {{
+                        console.error("Capture area not found");
+                        return;
+                    }}
+                    html2canvas(area, {{
+                        useCORS: true,
+                        allowTaint: false,
+                        scale: 2,
+                        logging: false,
+                        backgroundColor: "#ffffff"
+                    }}).then(canvas => {{
+                        const link = document.createElement('a');
+                        link.download = 'GDD_Report_{key}.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    }}).catch(err => {{
+                        console.error("Canvas capture error:", err);
+                    }});
+                }};
+                document.head.appendChild(script);
+            }})();
             </script>
         """, height=0)
-        st.success("이미지 생성이 시작되었습니다.")
+        st.success("이미지 캡처를 시작했습니다. 완료될 때까지 잠시만 기다려 주세요!")
 
-st.caption("비토쨩 GDD Pro | Secure API & Image Export Mode")
+st.caption("비토쨩 GDD Pro | Reliable Image Export Engine")
