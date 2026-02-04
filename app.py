@@ -1,37 +1,24 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
+from fpdf import FPDF
 
 # 1. 페이지 설정
-st.set_page_config(page_title="Game PM AI Assistant", page_icon="🎮")
+st.set_page_config(page_title="비토쨩 자동 기획서", page_icon="🎮")
 
-# API 키 설정
+# --- 🔒 API 설정 ---
+# 승수님, 만약 이 코드로도 404가 뜨면 Google AI Studio에서 
+# 'Create API key in a NEW project'로 키를 새로 발급받아 교체해 보세요.
 API_KEY = "AIzaSyDsZOnRpEaT6DYRmBtPn2GF_Zg6HmD8FBM"
+genai.configure(api_key=API_KEY)
 
-# 최신 SDK 클라이언트 생성
-try:
-    client = genai.Client(api_key=API_KEY)
-except Exception as e:
-    st.error(f"클라이언트 생성 실패: {e}")
-
-# 2. 모델 자동 탐색 기능
-@st.cache_resource
-def find_working_model():
-    try:
-        models = client.models.list()
-        for m in models:
-            if "generateContent" in m.supported_generation_methods:
-                if "gemini-1.5-flash" in m.name:
-                    return m.name
-        return "gemini-1.5-flash"
-    except:
-        return "gemini-1.5-flash"
-
-target_model = find_working_model()
-
-# 3. 웹 화면 UI
-st.title("🎮 Game Idea to GDD")
-st.write("베테랑 게임 PM의 시각으로 기획서 초안을 작성합니다.")
+# 2. 웹 화면 UI
+st.title("비토쨩 자동 기획서")
+st.write("제미나이로 기획서 만들어 PDF까지 추출하기")
 st.divider()
+
+# 세션 상태 초기화 (결과 유지용)
+if 'gdd_result' not in st.session_state:
+    st.session_state['gdd_result'] = None
 
 col1, col2 = st.columns(2)
 with col1:
@@ -41,50 +28,69 @@ with col2:
     art_style = st.selectbox("아트 스타일", ["픽셀 아트", "2D 카툰", "실사풍", "3D 캐주얼"])
     keywords = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프, 덱빌딩")
 
-# 4. 생성 로직
+# --- 📄 PDF 생성 함수 ---
+def create_pdf(text):
+    pdf = FPDF()
+    pdf.add_page()
+    try:
+        # 승수님이 확인하신 폰트 파일명 적용
+        pdf.add_font('Nanum', '', 'NanumGothic-Regular.ttf')
+        pdf.set_font('Nanum', size=11)
+    except:
+        pdf.set_font('Arial', size=11)
+        st.warning("폰트 파일을 찾을 수 없어 한글이 깨질 수 있습니다. 폴더에 .ttf 파일이 있는지 확인하세요.")
+
+    # 텍스트 출력 및 자동 줄바꿈
+    pdf.multi_cell(0, 8, txt=text)
+    return pdf.output()
+
+# 3. 생성 로직
 if st.button("기획서 초안 생성 ✨", type="primary"):
     if not keywords:
         st.warning("핵심 키워드를 입력해 주세요.")
     else:
         with st.spinner("AI PM이 기획서를 작성 중입니다..."):
-            # 💡 여기서 'prompt' 변수를 먼저 정의합니다!
-            input_prompt = f"""
-            당신은 10년 경력의 게임 개발 PM입니다. 
-            다음 조건을 바탕으로 전문적인 게임 기획서 초안(GDD)을 한국어로 작성하세요.
+            prompt = f"""
+            너는 10년 경력의 게임 PM이야. 다음 조건으로 전문적인 GDD 초안을 한국어로 써줘.
+            - 장르: {genre} / 타겟: {target} / 키워드: {keywords} / 아트: {art_style}
             
-            - 장르: {genre}
-            - 타겟: {target}
-            - 키워드: {keywords}
-            - 아트 스타일: {art_style}
-            
-            [문서 구조]
-            1. Concept Summary: 한 줄 핵심 요약
-            2. World Building: 세계관 및 주요 설정
-            3. Core Loop: [실행 - 보상 - 성장] 순환 구조
-            4. Key Features: 핵심 재미 요소 3가지
-            5. Monetization: 글로벌 시장에 적합한 BM 제안
+            [구조] 1. Concept Summary 2. World Building 3. Core Loop 4. Key Features 5. Monetization
             """
             
             try:
-                # 💡 정의된 input_prompt를 사용합니다.
-                response = client.models.generate_content(
-                    model=target_model,
-                    contents=input_prompt
-                )
+                # 💡 모델 선언 시점과 호출 방식을 분리하여 안정성을 높임
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content(prompt)
                 
-                st.markdown("---")
-                st.markdown("### 📝 생성된 기획서 초안")
-                st.markdown(response.text)
-                
-            except Exception as e:
-                # 💡 만약 404가 나면 gemini-pro로 마지막 시도
-                try:
-                    response = client.models.generate_content(
-                        model="gemini-flash-latest",
-                        contents=input_prompt
-                    )
-                    st.markdown(response.text)
-                except Exception as final_error:
-                    st.error(f"생성 중 오류가 발생했습니다: {final_error}")
+                if response.text:
+                    st.session_state['gdd_result'] = response.text
+                else:
+                    st.error("AI가 빈 답변을 보냈습니다. 다시 시도해 주세요.")
 
-st.caption("© 2026 Game PM AI Assistant")
+            except Exception as e:
+                # 만약 404가 나면 다른 모델명으로 재시도
+                try:
+                    model = genai.GenerativeModel('gemini-flash-latest')
+                    response = model.generate_content(prompt)
+                    st.session_state['gdd_result'] = response.text
+                except:
+                    st.error(f"상세 에러: {e}")
+
+# 4. 결과 출력 및 PDF 다운로드
+if st.session_state['gdd_result']:
+    st.markdown("---")
+    st.markdown("### 📝 생성된 기획서 초안")
+    st.markdown(st.session_state['gdd_result'])
+    
+    try:
+        pdf_bytes = create_pdf(st.session_state['gdd_result'])
+        st.download_button(
+            label="📄 PDF로 다운로드",
+            data=bytes(pdf_bytes),
+            file_name=f"GDD_{keywords}.pdf",
+            mime="application/pdf"
+        )
+    except Exception as e:
+        st.error(f"PDF 생성 실패: {e}")
+
+st.caption("비토쨩이 테스트로 만들었단다.")
