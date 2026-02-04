@@ -10,7 +10,7 @@ import zlib
 st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
 
 # API 설정
-API_KEY = "AIzaSyDsZOnRpEaT6DYRmBtPn2GF_Zg6HmD8FBM"
+API_KEY = "AIzaSyBpUR0gl_COhxbFPWxTiW6JJMuGgDF4Ams"
 genai.configure(api_key=API_KEY)
 
 # --- 🎨 이미지 생성 함수 (Imagen 4.0 사용) ---
