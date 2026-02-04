@@ -59,7 +59,8 @@ st.markdown("""
     }
     
     #gdd-capture-area h1 { font-size: 2.2rem; text-align: center; margin-bottom: 25px; border-bottom: 5px solid #6366f1; padding-bottom: 15px; }
-    #gdd-capture-area h2 { font-size: 1.6rem; color: #4f46e5; margin-top: 35px; border-left: 6px solid #6366f1; padding-left: 12px; background: #f8fafc; }
+    #gdd-capture-area h2 { font-size: 1.6rem; color: #4f46e5; margin-top: 35px; border-left: 6px solid #6366f1; padding-left: 12px; background: #f8fafc; margin-bottom: 15px; }
+    #gdd-capture-area h3 { font-size: 1.3rem; font-weight: 700; margin-top: 25px; margin-bottom: 10px; color: #1e293b; }
     #gdd-capture-area p, #gdd-capture-area li { font-size: 17px; margin-bottom: 10px; word-break: keep-all; }
 
     .img-caption {
@@ -136,7 +137,7 @@ with st.sidebar:
 
 # --- 4. UI Main ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro 🎮</h1>', unsafe_allow_html=True)
-st.write("저장 기능이 강화된 고품격 게임 기획서 생성 도구입니다.")
+st.write("저장 시 폰트 깨짐과 서식을 완벽하게 수정한 고품격 기획 도구입니다.")
 st.divider()
 
 # Input Section
@@ -154,7 +155,15 @@ with st.container():
         else:
             with st.spinner("AI가 기획서와 아트를 생성 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
-                prompt = f"당신은 시니어 게임 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 전문 GDD를 작성하세요. 마크다운 형식을 지켜주세요."
+                prompt = f"""
+                당신은 시니어 게임 기획자입니다.
+                다음 조건으로 게임 디자인 문서(GDD)를 작성하세요: 장르={genre}, 국가={target}, 키워드={key}, 아트={art}.
+                
+                [중요 지시사항]
+                1. 반드시 마크다운(Markdown) 형식을 사용하세요.
+                2. 헤더(###)와 본문 사이, 리스트 항목들 사이에는 적절한 줄바꿈을 포함하세요.
+                3. 전문 용어와 시스템 수치를 포함하여 상세히 작성하세요.
+                """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
                 
@@ -184,7 +193,6 @@ if st.session_state['gdd_result']:
         st.markdown('<p class="img-caption">[Main Visual Concept]</p>', unsafe_allow_html=True)
 
     content = st.session_state['gdd_result']
-    # 마크다운 렌더링을 위해 간단한 HTML 변환 대신 st.markdown 사용
     sections = content.split("## ")
     for i, section in enumerate(sections):
         if not section.strip(): continue
@@ -209,17 +217,15 @@ if st.session_state['gdd_result']:
             
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- 📥 저장 엔진 (보안 및 격리벽 해결) ---
+    # --- 📥 저장 엔진 (폰트 깨짐 및 마크다운 처리 수정) ---
     st.write("---")
     
-    # 자바스크립트에 전달할 데이터 준비
     export_data = {
         "title": f"{key.upper()} 기획안",
         "content": st.session_state['gdd_result'],
         "images": st.session_state['generated_images']
     }
     
-    # 고도화된 export 컴포넌트
     components.html(f"""
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <button id="pdfBtn" style="flex:1; background: #6366f1; color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px;">
@@ -234,84 +240,105 @@ if st.session_state['gdd_result']:
         <script>
             const data = {json.dumps(export_data)};
             
-            // 헬퍼: HTML 문서 생성
+            // 지능형 마크다운 to HTML 컨버터
+            function mdToHtml(md) {{
+                let html = md
+                    .replace(/### (.*)/g, '<h3>$1</h3>')
+                    .replace(/## (.*)/g, '<h2>$1</h2>')
+                    .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+                    .replace(/^\\* (.*)/gm, '<li>$1</li>')
+                    .replace(/(<li>.*<\\/li>)/s, '<ul>$1</ul>')
+                    .replace(/\\n/g, '<br>');
+                return html;
+            }}
+
             function createPrintHTML(data) {{
-                let html = `<html><head><title>${{data.title}}</title>`;
+                let html = `<html><head><meta charset="UTF-8"><title>${{data.title}}</title>`;
                 html += `<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">`;
                 html += `<style>
-                    body {{ font-family: 'Pretendard', sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: 0 auto; }}
-                    h1 {{ font-size: 32px; border-bottom: 4px solid #6366f1; padding-bottom: 10px; text-align: center; }}
-                    h2 {{ color: #4f46e5; margin-top: 30px; border-left: 5px solid #6366f1; padding-left: 10px; }}
-                    img {{ max-width: 100%; border-radius: 8px; margin: 20px 0; }}
-                    p, li {{ font-size: 16px; line-height: 1.6; margin-bottom: 10px; }}
-                    .caption {{ text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 20px; }}
+                    body {{ font-family: 'Pretendard', sans-serif; padding: 40px; color: #1e293b; max-width: 850px; margin: 0 auto; line-height: 1.8; }}
+                    h1 {{ font-size: 42px; border-bottom: 6px solid #6366f1; padding-bottom: 15px; text-align: center; font-weight: 900; margin-bottom: 40px; }}
+                    h2 {{ color: #4f46e5; margin-top: 45px; border-left: 8px solid #6366f1; padding: 10px 0 10px 20px; background: #f8fafc; font-size: 28px; font-weight: 800; }}
+                    h3 {{ font-size: 22px; font-weight: 700; margin-top: 30px; margin-bottom: 15px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }}
+                    img {{ max-width: 100%; border-radius: 12px; margin: 30px 0; display: block; }}
+                    p, li {{ font-size: 18px; margin-bottom: 12px; color: #334155; word-break: keep-all; }}
+                    ul {{ padding-left: 25px; margin-bottom: 25px; }}
+                    li {{ list-style-type: disc; }}
+                    strong {{ color: #4f46e5; }}
+                    .caption {{ text-align: center; color: #94a3b8; font-size: 14px; margin-top: -20px; margin-bottom: 40px; font-weight: 500; }}
                 </style></head><body>`;
                 
                 html += `<h1>${{data.title}}</h1>`;
                 
                 if(data.images.concept) {{
-                    html += `<img src="data:image/png;base64,${{data.images.concept}}"><div class="caption">[Main Visual]</div>`;
+                    html += `<div style="text-align:center"><img src="data:image/png;base64,${{data.images.concept}}"></div><div class="caption">[Main Visual]</div>`;
                 }}
                 
                 const sections = data.content.split('## ');
                 sections.forEach((sec, i) => {{
                     if(!sec.trim()) return;
-                    html += '<h2>' + (i > 0 ? '## ' : '') + sec.replace(/\\n/g, '<br>') + '</h2>';
+                    let sectionContent = mdToHtml((i > 0 ? '## ' : '') + sec);
+                    html += sectionContent;
                     
-                    if(i === 1 && data.images.world) html += `<img src="data:image/png;base64,${{data.images.world}}"><div class="caption">[World]</div>`;
-                    if(i === 3 && data.images.ui) html += `<img src="data:image/png;base64,${{data.images.ui}}"><div class="caption">[UI/UX]</div>`;
-                    if(i === 5 && data.images.asset) html += `<img src="data:image/png;base64,${{data.images.asset}}"><div class="caption">[Asset]</div>`;
+                    // 이미지 중간 삽입 포인트
+                    if(i === 1 && data.images.world) html += `<div style="text-align:center"><img src="data:image/png;base64,${{data.images.world}}"></div><div class="caption">[World Reference]</div>`;
+                    if(i === 3 && data.images.ui) html += `<div style="text-align:center"><img src="data:image/png;base64,${{data.images.ui}}"></div><div class="caption">[UI/UX Mockup]</div>`;
+                    if(i === 5 && data.images.asset) html += `<div style="text-align:center"><img src="data:image/png;base64,${{data.images.asset}}"></div><div class="caption">[Character Concept]</div>`;
                 }});
                 
                 html += `</body></html>`;
                 return html;
             }}
 
-            // PDF/인쇄 기능
             document.getElementById('pdfBtn').onclick = () => {{
                 const win = window.open('', '_blank');
                 win.document.write(createPrintHTML(data));
                 win.document.close();
+                // 폰트 로드를 위해 짧은 대기 후 인쇄 실행
                 win.onload = () => {{
-                    win.focus();
-                    win.print();
+                    setTimeout(() => {{
+                        win.focus();
+                        win.print();
+                    }}, 500);
                 }};
             }};
 
-            // 이미지 저장 기능
             document.getElementById('pngBtn').onclick = () => {{
                 const tempDiv = document.createElement('div');
                 tempDiv.style.position = 'absolute';
                 tempDiv.style.left = '-9999px';
-                tempDiv.style.width = '800px';
+                tempDiv.style.width = '850px';
                 tempDiv.innerHTML = createPrintHTML(data);
                 document.body.appendChild(tempDiv);
 
                 const btn = document.getElementById('pngBtn');
-                btn.innerText = "⏳ 처리 중...";
+                const originalText = btn.innerText;
+                btn.innerText = "⏳ 렌더링 중...";
                 btn.disabled = true;
 
+                // 폰트와 이미지가 렌더링될 시간 확보
                 setTimeout(() => {{
                     html2canvas(tempDiv, {{ 
                         useCORS: true, 
                         scale: 2,
-                        backgroundColor: "#ffffff"
+                        backgroundColor: "#ffffff",
+                        logging: false
                     }}).then(canvas => {{
                         const link = document.createElement('a');
                         link.download = `GDD_${{data.title}}.png`;
                         link.href = canvas.toDataURL('image/png');
                         link.click();
-                        btn.innerText = "🖼️ 이미지(PNG) 저장";
+                        btn.innerText = originalText;
                         btn.disabled = false;
                         document.body.removeChild(tempDiv);
                     }}).catch(err => {{
-                        alert("이미지 생성 중 오류가 발생했습니다.");
-                        console.error(err);
+                        alert("이미지 생성 실패");
                         btn.disabled = false;
+                        btn.innerText = originalText;
                     }});
-                }}, 500);
+                }}, 1000);
             }};
         </script>
     """, height=100)
 
-st.caption("비토쨩 GDD Pro | Secure Export System Active")
+st.caption("비토쨩 GDD Pro | Typography & Format Fix Applied")
