@@ -166,6 +166,7 @@ if st.session_state['gdd_result']:
         "images": st.session_state['generated_images']
     }
     
+    # f-string 중괄호 에러 해결을 위해 모든 자바스크립트 중괄호를 {{ }}로 변경
     components.html(f"""
         <div id="render-target"></div>
         <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -187,7 +188,6 @@ if st.session_state['gdd_result']:
                 let html = `<div id="export-area" style="background:white; padding:100px 80px; border-radius:24px; font-family:'Pretendard', sans-serif; color:#1e293b; line-height:1.9; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 20px 50px rgba(0,0,0,0.08);">`;
                 html += `<h1 style="font-size:64px; font-weight:900; text-align:center; border-bottom:12px solid #4f46e5; padding-bottom:30px; margin-bottom:60px; letter-spacing:-0.04em;">${{data.title}}</h1>`;
                 
-                // 1. [메인] 최상단 배치
                 if(data.images.concept) {{
                     html += `<div style="text-align:center; margin-bottom:80px;"><img src="data:image/png;base64,${{data.images.concept}}" style="max-width:1000px; width:100%; border-radius:20px; box-shadow:0 15px 40px rgba(0,0,0,0.15);"><div style="color:#64748b; font-size:18px; margin-top:20px; font-style:italic; font-weight:600;">[Key Concept Architecture]</div></div>`;
                 }}
@@ -195,7 +195,6 @@ if st.session_state['gdd_result']:
                 const sections = data.content.split('## ');
                 let usedKeys = new Set();
 
-                // 섹션별 주요 이미지 매칭 테이블
                 const imgMap = {{
                     "world": ["세계관", "배경", "아트", "분위기"],
                     "ui": ["시스템", "UI", "인터페이스", "화면", "메커니즘"],
@@ -207,7 +206,6 @@ if st.session_state['gdd_result']:
                     let title = sec.split('\\n')[0];
                     html += cleanMd((i > 0 ? '## ' : '') + sec);
                     
-                    // 해당 섹션이 주요 카테고리인 경우 이미지 삽입
                     for(let key in imgMap) {{
                         if(!usedKeys.has(key)) {{
                             if(imgMap[key].some(kw => title.includes(kw)) && data.images[key]) {{
@@ -215,7 +213,7 @@ if st.session_state['gdd_result']:
                                 html += `<div style="text-align:center; margin:60px 0;"><img src="data:image/png;base64,${{data.images[key]}}" style="max-width:1000px; width:100%; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1);"><div style="color:#64748b; font-size:16px; margin-top:15px; font-weight:600;">[Design Reference: ${{label}}]</div></div>`;
                                 usedKeys.add(key);
                                 break;
-                            }
+                            }}
                         }
                     }
                 }});
@@ -230,7 +228,7 @@ if st.session_state['gdd_result']:
                     <button id="pdfBtn" style="flex:1; background:#4f46e5; color:white; border:none; padding:25px; border-radius:16px; font-weight:900; cursor:pointer; font-size:20px; box-shadow:0 10px 25px rgba(79,70,229,0.3);">📄 PDF로 저장</button>
                     <button id="pngBtn" style="flex:1; background:#7c3aed; color:white; border:none; padding:25px; border-radius:16px; font-weight:900; cursor:pointer; font-size:20px; box-shadow:0 10px 25px rgba(124,58,237,0.3);">🖼️ 이미지 저장</button>
                 </div>
-                <div id="preview-box">${{buildHTML(data)}}</div>
+                <div id="preview-box">\${{buildHTML(data)}}</div>
             `;
 
             document.getElementById('pdfBtn').onclick = () => {{
@@ -245,7 +243,7 @@ if st.session_state['gdd_result']:
                 btn.innerText = "⏳ 렌더링 중...";
                 html2canvas(document.getElementById('export-area'), {{ useCORS: true, scale: 2 }}).then(canvas => {{
                     const a = document.createElement('a');
-                    a.download = `GDD_${{data.title}}.png`;
+                    a.download = `GDD_\${{data.title}}.png`;
                     a.href = canvas.toDataURL('image/png');
                     a.click();
                     btn.innerText = "🖼️ 이미지 저장";
