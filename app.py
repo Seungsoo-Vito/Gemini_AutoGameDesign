@@ -77,12 +77,15 @@ def generate_image(prompt_type, genre, art, key):
 # --- 🏠 메인 화면 ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro B-Ver 🎮</h1>', unsafe_allow_html=True)
 
-# 입력 영역
+# 입력 영역 (4개 옵션으로 복구)
 with st.container():
-    c1, c2, c3 = st.columns([1, 1, 1])
+    c1, c2 = st.columns(2)
     with c1: genre = st.selectbox("장르", ["방치형 RPG", "수집형 RPG", "MMORPG", "로그라이크", "전략 시뮬레이션"])
-    with c2: art = st.selectbox("스타일", ["픽셀 아트", "2D 카툰", "실사풍", "3D 캐주얼", "사이버펑크"])
-    with c3: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 차원이동")
+    with c2: target = st.selectbox("타겟 시장", ["글로벌", "한국", "일본", "북미", "유럽", "중국"])
+    
+    c3, c4 = st.columns(2)
+    with c3: art = st.selectbox("스타일", ["픽셀 아트", "2D 카툰", "실사풍", "3D 캐주얼", "사이버펑크"])
+    with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 차원이동")
     
     if st.button("고품격 기획서 & 이미지 생성 시작 ✨", type="primary"):
         if not st.session_state.get("api_key"):
@@ -93,7 +96,7 @@ with st.container():
             with st.spinner("전문 기획자가 텍스트와 아트를 독립적으로 구성 중입니다..."):
                 # 1. 텍스트 생성
                 model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
-                prompt = f"당신은 전설적인 기획자입니다. {genre}, {art}, {key} 조건으로 전문 GDD를 작성하세요. ## 제목, **강조**, $$ 공식 $$, | 표 | 형식을 반드시 포함하세요. UI/UX 전략 섹션도 필수입니다."
+                prompt = f"당신은 전설적인 기획자입니다. 장르: {genre}, 타겟 시장: {target}, 아트 스타일: {art}, 핵심 키워드: {key} 조건으로 전문 GDD를 작성하세요. ## 제목, **강조**, $$ 공식 $$, | 표 | 형식을 반드시 포함하세요. UI/UX 전략 섹션도 필수입니다."
                 res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = res.text
                 
@@ -143,7 +146,7 @@ if st.session_state['gdd_result']:
             // 타이틀 주입
             document.getElementById('doc-title').innerText = data.title;
             
-            // 텍스트 파싱 로직 (A버전 엔진)
+            // 텍스트 파싱 로직
             function parseText(text) {{
                 return text.split('\\n').map(line => {{
                     let l = line.trim();
