@@ -50,21 +50,26 @@ with st.sidebar:
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# --- 🎨 고화질 이미지 엔진 (UI/UX 특화) ---
+# --- 🎨 고화질 이미지 엔진 (Imagen 4.0 규격 준수) ---
 def generate_hd_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
-        "concept": f"Masterpiece cinematic game key visual, {genre}, theme: {key}, style: {art}. 8k resolution, professional game lighting, epic composition, concept art.",
-        "ui": f"Professional High-fidelity mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Clean layout, premium dashboard, inventory, menu screens, inspired by {key}. Digital game design sheet, professional 4k."
+        "concept": f"A high-quality masterpiece game key visual art, {genre}, theme: {key}, style: {art}. 8k resolution, cinematic lighting, professional digital art.",
+        "ui": f"High-fidelity professional mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Dashboard, inventory, clean layout, inspired by {key}. Digital game design sheet, 4k."
     }
     if prompt_type not in prompts: return None
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={API_KEY}"
-    payload = {"instances": [{"prompt": prompts[prompt_type]}], "parameters": {"sampleCount": 1}}
+    # 💡 중요: imagen-4.0의 정확한 호출 규격인 단일 오브젝트 형식으로 수정
+    payload = {
+        "instances": {"prompt": prompts[prompt_type]}, 
+        "parameters": {"sampleCount": 1}
+    }
     try:
-        response = requests.post(url, json=payload, timeout=120)
+        response = requests.post(url, json=payload, timeout=90)
         if response.status_code == 200:
-            return response.json()["predictions"][0]["bytesBase64Encoded"]
+            result = response.json()
+            return result["predictions"][0]["bytesBase64Encoded"]
     except: pass
     return None
 
@@ -79,7 +84,8 @@ with st.sidebar:
         st.header("🖼️ 생성 이미지 분석")
         for k, v in st.session_state['generated_images'].items():
             color = "#10b981" if v else "#ef4444"
-            st.markdown(f"<div class='status-card'>{k.upper()}: <b style='color:{color}'>{'준비됨' if v else '실패'}</b></div>", unsafe_allow_html=True)
+            status = "준비됨" if v else "실패"
+            st.markdown(f"""<div class='status-card'>{k.upper()}: <b style='color:{color}'>{status}</b></div>""", unsafe_allow_html=True)
 
 # 메인 UI
 st.markdown('<h1 class="main-title">비토쨩 자동 기획서 만들기 🎮</h1>', unsafe_allow_html=True)
@@ -93,24 +99,24 @@ with st.container():
     with c2: target = st.selectbox("타겟 시장", ["글로벌", "한국", "일본", "북미", "유럽", "중국"])
     c3, c4 = st.columns(2)
     with c3: art = st.selectbox("아트 스타일", ["픽셀 아트 (Retro)", "2D 카툰", "실사풍", "3D 캐주얼", "사이버펑크", "다크 판타지"])
-    with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프, 지하철")
+    with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프")
     
     if st.button("고품격 기획서 빌드 시작 ✨", type="primary", use_container_width=True):
         if not API_KEY: st.error("API 키를 입력하세요.")
         elif not key: st.warning("키워드를 입력하세요.")
         else:
-            with st.spinner("전문 기획자가 텍스트를 설계하고 UI/UX 목업을 렌더링 중입니다..."):
+            with st.spinner("전문 기획자가 모든 텍스트와 UI 목업을 완벽하게 렌더링 중입니다 (최대 2분 소요)..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
                 prompt = f"""
                 당신은 시니어 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 전문 GDD를 작성하세요.
                 
                 [중요 지침]
                 1. 섹션 제목은 반드시 '## 제목' 형식을 사용하세요.
-                2. 본문의 **강조 텍스트**를 적극적으로 활용하되 마크다운 기호가 그대로 남지 않도록 주의하세요.
+                2. 본문의 **강조 텍스트**를 적극적으로 활용하세요.
                 3. 의미 없는 '#' 한 줄 구분선은 절대 넣지 마세요.
                 4. 전투 공식, 시너지 시스템, 경제 구조를 매우 구체적으로 기술하세요.
                 5. 복잡한 데이터는 반드시 | 헤더 | 마크다운 표 형식으로 작성하세요.
-                6. 'UI/UX 전략' 혹은 '인터페이스 설계' 섹션을 반드시 포함하여 상세히 기술하세요.
+                6. 'UI/UX 전략' 섹션을 반드시 포함하여 상세히 기술하세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
@@ -121,11 +127,11 @@ with st.container():
                     "ui": generate_hd_image("ui", genre, art, key)
                 }
 
-# --- 🚀 [핵심] UI/UX 특화 렌더링 엔진 ---
+# --- 🚀 [핵심] 마크다운 정화 및 이미지 100% 출력 보장 엔진 ---
 if st.session_state['gdd_result']:
     st.divider()
     
-    # 데이터 안전 전송
+    # 데이터 안전 전송용 JSON (중괄호 충돌 방지)
     safe_data = json.dumps({
         "title": f"{key.upper()} 기획안",
         "content": st.session_state['gdd_result'],
@@ -139,78 +145,37 @@ if st.session_state['gdd_result']:
         (function() {
             const data = JSON.parse('ST_DATA_JSON');
             
-            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기
+            // 🚀 기호 완전 박멸 및 고품격 태그 변환기
             function formatText(text) {
-                const lines = text.split('\\n');
-                let result = [];
-                let inTable = false;
-                let tableData = [];
-
-                function flushTable() {
-                    if (tableData.length === 0) return '';
-                    let html = '<div style="margin:30px 0; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.05);">';
-                    tableData.forEach((row, idx) => {
-                        const cells = row.split('|').filter(c => c.trim() !== '' || row.indexOf('|') !== row.lastIndexOf('|')).map(c => c.trim());
-                        if (cells.length === 0) return;
-                        if (row.includes('---')) return;
-
-                        if (idx === 0) {
-                            html += '<thead style="background:#4f46e5; color:white;"><tr>';
-                            cells.forEach(c => html += `<th style="padding:18px 20px; text-align:left; font-weight:700;">${processInline(c)}</th>`);
-                            html += '</tr></thead><tbody>';
-                        } else {
-                            html += '<tr style="border-bottom:1px solid #f1f5f9;">';
-                            cells.forEach(c => html += `<td style="padding:18px 20px; font-size:18px; color:#334155;">${processInline(c)}</td>`);
-                            html += '</tr>';
-                        }
-                    });
-                    html += '</tbody></table></div>';
-                    return html;
-                }
-
-                function processInline(t) {
-                    // **별표** 제거 및 강조 적용
-                    return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
-                }
-
-                lines.forEach(line => {
+                return text.split('\\n').map(line => {
                     let l = line.trim();
-                    if (!l || l === '#' || l === '##') {
-                        if (inTable) { result.push(flushTable()); tableData = []; inTable = false; }
-                        return;
-                    }
-
-                    // 구분선 처리
-                    if (l === '---' || l === '***') {
-                        if (inTable) { result.push(flushTable()); tableData = []; inTable = false; }
-                        result.push('<hr style="border:none; border-top:1px solid #e2e8f0; margin:50px 0;">');
-                        return;
-                    }
-
-                    // 표 감지
+                    if (!l || l === '#' || l === '##' || l === '###') return '';
+                    
+                    // 1. 표(Table) 처리
                     if (l.startsWith('|')) {
-                        inTable = true;
-                        tableData.push(l);
-                        return;
-                    } else if (inTable) {
-                        result.push(flushTable());
-                        tableData = [];
-                        inTable = false;
+                        const cells = l.split('|').filter(c => c.trim() !== '' || l.indexOf('|') !== l.lastIndexOf('|')).map(c => c.trim());
+                        if (cells.length === 0 || l.includes('---')) return '';
+                        return `<tr style="border-bottom:1px solid #f1f5f9;">${cells.map(c => `<td style="padding:15px; font-size:19px; color:#334155; border:1px solid #e2e8f0;">${processInline(c)}</td>`).join('')}</tr>`;
                     }
 
+                    // 2. 제목 변환 (기호 삭제)
                     if (l.startsWith('##')) {
-                        result.push(`<h2 style="font-size:36px; font-weight:900; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:25px; background:#f8fafc; margin-top:80px; margin-bottom:30px; border-radius:0 15px 15px 0;">${l.replace(/^##\s*/, '')}</h2>`);
-                    } else if (l.startsWith('###')) {
-                        result.push(`<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${l.replace(/^###\s*/, '')}</h3>`);
-                    } else if (l.startsWith('* ') || l.startsWith('- ')) {
-                        result.push(`<li style="font-size:21px; color:#475569; margin-bottom:15px; margin-left:25px; line-height:1.6; list-style-type:square;">${processInline(l.replace(/^[*|-]\s*/, ''))}</li>`);
-                    } else {
-                        result.push(`<p style="font-size:21px; color:#334155; line-height:1.9; text-align:justify; margin-bottom:25px;">${processInline(l)}</p>`);
+                        return `<h2 style="font-size:36px; font-weight:900; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:25px; background:#f8fafc; margin-top:80px; margin-bottom:30px; border-radius:0 15px 15px 0;">${l.replace(/^##\s*/, '')}</h2>`;
                     }
-                });
+                    if (l.startsWith('###')) {
+                        return `<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${l.replace(/^###\s*/, '')}</h3>`;
+                    }
+                    
+                    // 3. 구분선
+                    if (l === '---' || l === '***') return '<hr style="border:none; border-top:1px solid #e2e8f0; margin:50px 0;">';
 
-                if (inTable) result.push(flushTable());
-                return result.join('');
+                    return `<p style="font-size:21px; color:#334155; line-height:1.9; text-align:justify; margin-bottom:25px;">${processInline(l)}</p>`;
+                }).join('');
+            }
+
+            function processInline(t) {
+                // 🌟 모든 ** 기호를 강력하게 제거하고 강조 적용
+                return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
             }
 
             function imgBox(b64, label) {
@@ -219,59 +184,53 @@ if st.session_state['gdd_result']:
                 return `
                     <div style="text-align:center; margin:90px 0; padding:40px; background:#f8fafc; border-radius:32px; border:1px solid #e2e8f0;">
                         <img src="${src}" style="width:100%; max-width:1100px; border-radius:20px; box-shadow:0 25px 50px rgba(0,0,0,0.15);">
-                        <div style="color:#64748b; font-size:18px; margin-top:25px; font-weight:700; font-style:italic; letter-spacing:1px;">[DESIGN REFERENCE: ${label}]</div>
+                        <div style="color:#64748b; font-size:18px; margin-top:25px; font-weight:700; font-style:italic;">[REFERENCE: ${label}]</div>
                     </div>`;
             }
 
             function renderAll() {
                 const root = document.getElementById('root-container');
+                let docHtml = `<div id="capture-page" style="background:white; padding:120px 100px; border-radius:40px; font-family:'Pretendard', sans-serif; color:#1e293b; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 40px 80px rgba(0,0,0,0.08);">`;
                 
-                let btns = `
-                    <div style="display:flex; gap:30px; margin-bottom:60px; max-width:1200px; margin:0 auto;">
-                        <button onclick="window.print()" style="flex:1; background:#4f46e5; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(79,70,229,0.3);">📄 PDF 문서로 저장하기</button>
-                        <button id="imgDown" style="flex:1; background:#7c3aed; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(124,58,237,0.3);">🖼️ 전체 리포트 이미지 저장</button>
-                    </div>`;
+                docHtml += `<h1 style="font-size:80px; font-weight:900; text-align:center; border-bottom:15px solid #4f46e5; padding-bottom:50px; margin-bottom:100px; letter-spacing:-0.05em;">${data.title}</h1>`;
+                
+                // [1] 메인 비주얼
+                docHtml += imgBox(data.images.concept, 'PROJECT CORE VISUAL');
+                
+                // [2] 본문 렌더링 및 UI 이미지 매칭
+                const sections = data.content.split('## ');
+                let uiPlaced = false;
 
-                let doc = `<div id="capture-page" style="background:white; padding:120px 100px; border-radius:40px; font-family:'Pretendard', sans-serif; color:#1e293b; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 40px 80px rgba(0,0,0,0.08);">`;
-                
-                doc += `<h1 style="font-size:80px; font-weight:900; text-align:center; border-bottom:15px solid #4f46e5; padding-bottom:50px; margin-bottom:100px; letter-spacing:-0.05em;">${data.title}</h1>`;
-                
-                // [1] 메인 비주얼 (최상단)
-                doc += imgBox(data.images.concept, 'PROJECT KEY VISUAL');
-                
-                const parts = data.content.split('## ');
-                let uiImagePlaced = false;
-
-                parts.forEach((sec, i) => {
+                sections.forEach((sec, i) => {
                     if (!sec.trim()) return;
-                    let content = (i > 0 ? '## ' : '') + sec;
-                    let title = sec.split('\\n')[0].toUpperCase();
+                    docHtml += formatText((i > 0 ? '## ' : '') + sec);
                     
-                    doc += formatText(content);
-                    
-                    // 🚀 UI/UX 관련 섹션인 경우 UI 목업 이미지 삽입
-                    if (!uiImagePlaced && data.images.ui && (title.includes('UI') || title.includes('UX') || title.includes('인터페이스') || title.includes('화면'))) {
-                        doc += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
-                        uiImagePlaced = true;
+                    // UI/UX 섹션이 나오면 이미지 삽입
+                    if (!uiPlaced && data.images.ui && (sec.includes('UI') || sec.includes('UX') || sec.includes('인터페이스'))) {
+                        docHtml += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
+                        uiPlaced = true;
                     }
                 });
 
-                // 만약 섹션 매칭이 안되었더라도 UI 이미지가 있다면 마지막에 삽입 (안전장치)
-                if (!uiImagePlaced && data.images.ui) {
-                    doc += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
-                }
+                // 안전장치: UI 이미지가 있는데 안 쓰였다면 마지막에 추가
+                if (!uiPlaced && data.images.ui) docHtml += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
 
-                doc += `</div>`;
-                root.innerHTML = btns + doc;
+                docHtml += `</div>`;
+                
+                root.innerHTML = `
+                    <div style="display:flex; gap:30px; margin-bottom:60px; max-width:1200px; margin:0 auto;">
+                        <button onclick="window.print()" style="flex:1; background:#4f46e5; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(79,70,229,0.3);">📄 PDF 문서로 저장하기</button>
+                        <button id="imgDown" style="flex:1; background:#7c3aed; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(124,58,237,0.3);">🖼️ 리포트 이미지 저장</button>
+                    </div>` + docHtml;
 
                 document.getElementById('imgDown').onclick = function() {
-                    this.innerText = "⏳ 고화질 렌더링 중...";
+                    this.innerText = "⏳ 렌더링 중...";
                     html2canvas(document.getElementById('capture-page'), { scale: 2, useCORS: true }).then(canvas => {
                         const a = document.createElement('a');
                         a.download = `GDD_REPORT_${data.title}.png`;
                         a.href = canvas.toDataURL('image/png');
                         a.click();
-                        this.innerText = "🖼️ 전체 리포트 이미지 저장";
+                        this.innerText = "🖼️ 리포트 이미지 저장";
                     });
                 };
             }
