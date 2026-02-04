@@ -50,17 +50,17 @@ with st.sidebar:
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# --- 🎨 고화질 이미지 엔진 (Imagen 4.0) ---
+# --- 🎨 고화질 이미지 엔진 (UI/UX 특화) ---
 def generate_hd_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
-        "concept": f"Masterpiece cinematic game key visual, {genre}, theme: {key}, style: {art}. 8k resolution, professional game lighting, epic scale, concept art.",
-        "ui": f"Professional High-fidelity mobile game UI design mockup, {genre} style: {art}. Clean layout, inventory, dashboard, inspired by {key}.",
-        "world": f"Environment concept art, immersive game world of {genre}, theme: {key}, style: {art}. Beautiful landscape, masterpiece lighting.",
-        "character": f"High-quality character concept portrait, {genre} hero, motif: {key}, style: {art}. Professional asset sheet design."
+        "concept": f"Masterpiece cinematic game key visual, {genre}, theme: {key}, style: {art}. 8k resolution, professional game lighting, epic composition, concept art.",
+        "ui": f"Professional High-fidelity mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Clean layout, premium dashboard, inventory, menu screens, inspired by {key}. Digital game design sheet, professional 4k."
     }
+    if prompt_type not in prompts: return None
+    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={API_KEY}"
-    payload = {"instances": [{"prompt": prompts.get(prompt_type, prompts["concept"])}], "parameters": {"sampleCount": 1}}
+    payload = {"instances": [{"prompt": prompts[prompt_type]}], "parameters": {"sampleCount": 1}}
     try:
         response = requests.post(url, json=payload, timeout=120)
         if response.status_code == 200:
@@ -99,7 +99,7 @@ with st.container():
         if not API_KEY: st.error("API 키를 입력하세요.")
         elif not key: st.warning("키워드를 입력하세요.")
         else:
-            with st.spinner("전문 기획자가 모든 텍스트와 아트를 완벽하게 렌더링 중입니다 (최대 2분 소요)..."):
+            with st.spinner("전문 기획자가 텍스트를 설계하고 UI/UX 목업을 렌더링 중입니다..."):
                 model = genai.GenerativeModel('gemini-flash-latest')
                 prompt = f"""
                 당신은 시니어 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 전문 GDD를 작성하세요.
@@ -109,20 +109,19 @@ with st.container():
                 2. 본문의 **강조 텍스트**를 적극적으로 활용하되 마크다운 기호가 그대로 남지 않도록 주의하세요.
                 3. 의미 없는 '#' 한 줄 구분선은 절대 넣지 마세요.
                 4. 전투 공식, 시너지 시스템, 경제 구조를 매우 구체적으로 기술하세요.
-                5. 복잡한 시스템이나 흐름은 반드시 | 헤더 | 마크다운 표 형식으로 작성하세요.
+                5. 복잡한 데이터는 반드시 | 헤더 | 마크다운 표 형식으로 작성하세요.
+                6. 'UI/UX 전략' 혹은 '인터페이스 설계' 섹션을 반드시 포함하여 상세히 기술하세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
                 
-                # 이미지 생성
+                # 이미지 생성 (메인 컨셉과 UI 목업에 집중)
                 st.session_state['generated_images'] = {
                     "concept": generate_hd_image("concept", genre, art, key),
-                    "world": generate_hd_image("world", genre, art, key),
-                    "ui": generate_hd_image("ui", genre, art, key),
-                    "character": generate_hd_image("character", genre, art, key)
+                    "ui": generate_hd_image("ui", genre, art, key)
                 }
 
-# --- 🚀 [핵심] 마크다운 정화, 이미지 강제 출력, 표 렌더링 엔진 ---
+# --- 🚀 [핵심] UI/UX 특화 렌더링 엔진 ---
 if st.session_state['gdd_result']:
     st.divider()
     
@@ -140,7 +139,7 @@ if st.session_state['gdd_result']:
         (function() {
             const data = JSON.parse('ST_DATA_JSON');
             
-            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기 (표 및 구분선 지원)
+            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기
             function formatText(text) {
                 const lines = text.split('\\n');
                 let result = [];
@@ -153,7 +152,7 @@ if st.session_state['gdd_result']:
                     tableData.forEach((row, idx) => {
                         const cells = row.split('|').filter(c => c.trim() !== '' || row.indexOf('|') !== row.lastIndexOf('|')).map(c => c.trim());
                         if (cells.length === 0) return;
-                        if (row.includes('---')) return; // 구분선 스킵
+                        if (row.includes('---')) return;
 
                         if (idx === 0) {
                             html += '<thead style="background:#4f46e5; color:white;"><tr>';
@@ -170,7 +169,7 @@ if st.session_state['gdd_result']:
                 }
 
                 function processInline(t) {
-                    // **별표** 강조 기호 제거 및 strong 태그 적용
+                    // **별표** 제거 및 강조 적용
                     return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
                 }
 
@@ -181,8 +180,8 @@ if st.session_state['gdd_result']:
                         return;
                     }
 
-                    // 가로선 (Divider) 처리: --- 또는 *** 감지
-                    if (l === '---' || l === '***' || l === '___') {
+                    // 구분선 처리
+                    if (l === '---' || l === '***') {
                         if (inTable) { result.push(flushTable()); tableData = []; inTable = false; }
                         result.push('<hr style="border:none; border-top:1px solid #e2e8f0; margin:50px 0;">');
                         return;
@@ -199,20 +198,13 @@ if st.session_state['gdd_result']:
                         inTable = false;
                     }
 
-                    // ## 제목 변환
                     if (l.startsWith('##')) {
                         result.push(`<h2 style="font-size:36px; font-weight:900; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:25px; background:#f8fafc; margin-top:80px; margin-bottom:30px; border-radius:0 15px 15px 0;">${l.replace(/^##\s*/, '')}</h2>`);
-                    }
-                    // ### 소제목 변환
-                    else if (l.startsWith('###')) {
+                    } else if (l.startsWith('###')) {
                         result.push(`<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${l.replace(/^###\s*/, '')}</h3>`);
-                    }
-                    // 불렛 포인트
-                    else if (l.startsWith('* ') || l.startsWith('- ')) {
+                    } else if (l.startsWith('* ') || l.startsWith('- ')) {
                         result.push(`<li style="font-size:21px; color:#475569; margin-bottom:15px; margin-left:25px; line-height:1.6; list-style-type:square;">${processInline(l.replace(/^[*|-]\s*/, ''))}</li>`);
-                    }
-                    // 일반 본문
-                    else {
+                    } else {
                         result.push(`<p style="font-size:21px; color:#334155; line-height:1.9; text-align:justify; margin-bottom:25px;">${processInline(l)}</p>`);
                     }
                 });
@@ -227,7 +219,7 @@ if st.session_state['gdd_result']:
                 return `
                     <div style="text-align:center; margin:90px 0; padding:40px; background:#f8fafc; border-radius:32px; border:1px solid #e2e8f0;">
                         <img src="${src}" style="width:100%; max-width:1100px; border-radius:20px; box-shadow:0 25px 50px rgba(0,0,0,0.15);">
-                        <div style="color:#64748b; font-size:18px; margin-top:25px; font-weight:700; font-style:italic; letter-spacing:1px;">[REFERENCE: ${label}]</div>
+                        <div style="color:#64748b; font-size:18px; margin-top:25px; font-weight:700; font-style:italic; letter-spacing:1px;">[DESIGN REFERENCE: ${label}]</div>
                     </div>`;
             }
 
@@ -244,30 +236,36 @@ if st.session_state['gdd_result']:
                 
                 doc += `<h1 style="font-size:80px; font-weight:900; text-align:center; border-bottom:15px solid #4f46e5; padding-bottom:50px; margin-bottom:100px; letter-spacing:-0.05em;">${data.title}</h1>`;
                 
+                // [1] 메인 비주얼 (최상단)
                 doc += imgBox(data.images.concept, 'PROJECT KEY VISUAL');
                 
                 const parts = data.content.split('## ');
-                const availableImages = [
-                    { data: data.images.world, lbl: 'WORLD CONCEPT' },
-                    { data: data.images.ui, lbl: 'UI/UX MOCKUP' },
-                    { data: data.images.character, lbl: 'CHARACTER DESIGN' }
-                ].filter(x => x.data);
+                let uiImagePlaced = false;
 
                 parts.forEach((sec, i) => {
                     if (!sec.trim()) return;
-                    doc += formatText((i > 0 ? '## ' : '') + sec);
+                    let content = (i > 0 ? '## ' : '') + sec;
+                    let title = sec.split('\\n')[0].toUpperCase();
                     
-                    if (i % 2 === 1 && availableImages.length > 0) {
-                        const nextImg = availableImages.shift();
-                        doc += imgBox(nextImg.data, nextImg.lbl);
+                    doc += formatText(content);
+                    
+                    // 🚀 UI/UX 관련 섹션인 경우 UI 목업 이미지 삽입
+                    if (!uiImagePlaced && data.images.ui && (title.includes('UI') || title.includes('UX') || title.includes('인터페이스') || title.includes('화면'))) {
+                        doc += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
+                        uiImagePlaced = true;
                     }
                 });
+
+                // 만약 섹션 매칭이 안되었더라도 UI 이미지가 있다면 마지막에 삽입 (안전장치)
+                if (!uiImagePlaced && data.images.ui) {
+                    doc += imgBox(data.images.ui, 'UI/UX SYSTEM MOCKUP');
+                }
 
                 doc += `</div>`;
                 root.innerHTML = btns + doc;
 
                 document.getElementById('imgDown').onclick = function() {
-                    this.innerText = "⏳ 고화질 렌더링 중 (잠시만 기다려주세요)...";
+                    this.innerText = "⏳ 고화질 렌더링 중...";
                     html2canvas(document.getElementById('capture-page'), { scale: 2, useCORS: true }).then(canvas => {
                         const a = document.createElement('a');
                         a.download = `GDD_REPORT_${data.title}.png`;
