@@ -55,7 +55,7 @@ def generate_hd_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
         "concept": f"Masterpiece cinematic game key visual, {genre}, theme: {key}, style: {art}. 8k resolution, professional game lighting, epic scale, concept art.",
-        "ui": f"Professional High-fidelity mobile game UI design mockup, {genre}, style: {art}. Clean layout, inventory, dashboard, inspired by {key}.",
+        "ui": f"Professional High-fidelity mobile game UI design mockup, {genre} style: {art}. Clean layout, inventory, dashboard, inspired by {key}.",
         "world": f"Environment concept art, immersive game world of {genre}, theme: {key}, style: {art}. Beautiful landscape, masterpiece lighting.",
         "character": f"High-quality character concept portrait, {genre} hero, motif: {key}, style: {art}. Professional asset sheet design."
     }
@@ -140,7 +140,7 @@ if st.session_state['gdd_result']:
         (function() {
             const data = JSON.parse('ST_DATA_JSON');
             
-            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기 (표 지원)
+            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기 (표 및 구분선 지원)
             function formatText(text) {
                 const lines = text.split('\\n');
                 let result = [];
@@ -170,6 +170,7 @@ if st.session_state['gdd_result']:
                 }
 
                 function processInline(t) {
+                    // **별표** 강조 기호 제거 및 strong 태그 적용
                     return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
                 }
 
@@ -177,6 +178,13 @@ if st.session_state['gdd_result']:
                     let l = line.trim();
                     if (!l || l === '#' || l === '##') {
                         if (inTable) { result.push(flushTable()); tableData = []; inTable = false; }
+                        return;
+                    }
+
+                    // 가로선 (Divider) 처리: --- 또는 *** 감지
+                    if (l === '---' || l === '***' || l === '___') {
+                        if (inTable) { result.push(flushTable()); tableData = []; inTable = false; }
+                        result.push('<hr style="border:none; border-top:1px solid #e2e8f0; margin:50px 0;">');
                         return;
                     }
 
