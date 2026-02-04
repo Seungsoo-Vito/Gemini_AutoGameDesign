@@ -63,7 +63,7 @@ with st.sidebar:
             st.session_state["api_key"] = user_key
             st.rerun()
 
-    # 이미지 로딩 상태 표시 섹션 (추가됨)
+    # 이미지 로딩 상태 표시 섹션
     if 'images' in st.session_state and st.session_state['images']:
         st.divider()
         st.subheader("🖼️ 이미지 생성 현황")
@@ -82,29 +82,33 @@ with st.sidebar:
 if 'gdd_result' not in st.session_state: st.session_state['gdd_result'] = None
 if 'images' not in st.session_state: st.session_state['images'] = {}
 
-# --- 🖼️ 이미지 생성 함수 ---
+# --- 🖼️ 이미지 생성 함수 (Imagen 4.0 정확한 규격 적용) ---
 def generate_image(prompt_type, genre, art, key):
     api_key = get_api_key()
     if not api_key: return None
     
     prompts = {
-        "concept": f"High-quality masterpiece game key visual art, {genre}, theme: {key}, style: {art}. Cinematic lighting, 8k resolution.",
-        "ui": f"High-fidelity mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Clean layout, inspired by {key}. 4k.",
-        "world": f"Stunning environment concept art, {genre} game world island, theme: {key}, style: {art}. Masterpiece landscape.",
-        "character": f"High-quality character portrait, {genre} hero unit, motif: {key}, style: {art}. Professional character sheet."
+        "concept": f"High-quality masterpiece game key visual art, {genre}, theme: {key}, style: {art}. Cinematic lighting, 8k resolution, professional digital art.",
+        "ui": f"High-fidelity mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Professional clean layout, inspired by {key}. 4k resolution.",
+        "world": f"Stunning environment concept art, vast game world, theme: {key}, style: {art}. Masterpiece landscape, high detail.",
+        "character": f"High-quality character portrait, {genre} hero unit, motif: {key}, style: {art}. Professional character sheet, sharp focus."
     }
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={api_key}"
+    
+    # 💡 중요: instances는 반드시 리스트([]) 형태여야 하며, 내부에 prompt 객체를 가져야 함
     payload = {
-        "instances": { "prompt": prompts.get(prompt_type, "") },
-        "parameters": { "sampleCount": 1 }
+        "instances": [{"prompt": prompts.get(prompt_type, "")}],
+        "parameters": {"sampleCount": 1}
     }
     
     try:
-        response = requests.post(url, json=payload, timeout=90)
+        response = requests.post(url, json=payload, timeout=120)
         if response.status_code == 200:
             res_json = response.json()
-            return res_json["predictions"][0]["bytesBase64Encoded"]
+            # 응답 구조 확인 후 데이터 추출
+            if "predictions" in res_json and len(res_json["predictions"]) > 0:
+                return res_json["predictions"][0]["bytesBase64Encoded"]
     except Exception:
         pass
     return None
@@ -127,12 +131,12 @@ with st.container():
         elif not key:
             st.warning("키워드를 입력해주세요.")
         else:
-            with st.spinner("전문 기획자가 텍스트와 아트를 하나로 엮는 중입니다 (최대 2분 소요)..."):
+            with st.spinner("전문 기획자가 모든 요소를 빌드 중입니다 (이미지 생성 포함 약 1~2분 소요)..."):
                 # 1. GDD 텍스트 생성
                 model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
                 prompt = f"""
                 당신은 전설적인 게임 기획자입니다. 
-                장르: {genre}, 타겟: {target}, 스타일: {art}, 키워드: {key} 조건으로 전문 GDD를 작성하세요.
+                장르: {genre}, 타겟: {target}, 스타일: {art}, 키워: {key} 조건으로 전문 GDD를 작성하세요.
                 
                 [필수 구조]
                 1. ## 제목 (상위 카테고리)
@@ -157,14 +161,14 @@ with st.container():
 if st.session_state['gdd_result']:
     st.divider()
     
-    payload = json.dumps({
+    # 데이터 안전 직렬화
+    payload_data = {
         "title": f"{key.upper()} PROJECT GDD",
         "content": st.session_state['gdd_result'],
         "images": st.session_state['images']
-    }).replace("\\", "\\\\").replace("'", "\\'")
+    }
+    payload_json = json.dumps(payload_data).replace("\\", "\\\\").replace("'", "\\'")
 
-    import streamlit.components.v1 as components
-    
     html_template = f"""
     <style>
         @media print {{
@@ -180,7 +184,6 @@ if st.session_state['gdd_result']:
         .btn-pdf {{ background: #4f46e5; }}
         .btn-img {{ background: #7c3aed; }}
 
-        /* 통합 기획서 종이 디자인 */
         #gdd-paper {{
             background: white; 
             max-width: 1200px; 
@@ -193,20 +196,18 @@ if st.session_state['gdd_result']:
             color: #1e293b;
         }}
 
-        /* 텍스트 요소 스타일 */
         h1.main-title-text {{ font-size: 64px; font-weight: 900; text-align: center; border-bottom: 12px solid #4f46e5; padding-bottom: 40px; margin-bottom: 60px; }}
         h2 {{ font-size: 34px; color: #4f46e5; border-left: 10px solid #4f46e5; padding-left: 20px; margin-top: 60px; margin-bottom: 30px; background: #f8fafc; padding-top: 15px; padding-bottom: 15px; border-radius: 0 12px 12px 0; font-weight: 800; }}
         h3 {{ font-size: 26px; color: #0891b2; margin-top: 45px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-weight: 700; }}
         p {{ font-size: 21px; color: #334155; margin-bottom: 25px; text-align: justify; }}
         
-        /* 특수 블록 */
         .math-block {{ background: #f8faff; border: 1px solid #c7d2fe; padding: 30px; border-radius: 12px; text-align: center; font-size: 24px; font-weight: 700; color: #3730a3; margin: 40px 0; font-family: 'Times New Roman', serif; }}
         table {{ width: 100%; border-collapse: collapse; margin: 30px 0; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }}
         td {{ padding: 15px; border: 1px solid #f1f5f9; font-size: 18px; }}
         
-        /* 이미지 카드 디자인 */
         .img-container {{ text-align: center; margin: 60px 0; padding: 30px; background: #f8fafc; border-radius: 24px; border: 1px solid #e2e8f0; }}
-        .img-container img {{ width: 100%; max-width: 1000px; border-radius: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }}
+        /* 이미지 사이즈 제약을 100%로 유연하게 변경 */
+        .img-container img {{ width: 100%; height: auto; border-radius: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }}
         .img-label {{ font-size: 16px; color: #6366f1; font-weight: 800; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px; }}
     </style>
 
@@ -224,46 +225,35 @@ if st.session_state['gdd_result']:
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script>
         (function() {{
-            const data = JSON.parse('{payload}');
-            
-            // 1. 타이틀 주입
+            const data = JSON.parse('{payload_json}');
             document.getElementById('title-area').innerText = data.title;
             
-            // 2. 메인 비주얼 주입 (최상단)
             if(data.images.concept) {{
                 document.getElementById('main-visual').innerHTML = createImgBox(data.images.concept, 'Project Core Visual Art');
             }}
 
-            // 3. 본문 텍스트 및 하위 이미지 파싱
             function parseContent(text) {{
                 return text.split('\\n').map(line => {{
                     let l = line.trim();
                     if (!l || l === '#' || l === '##') return '';
                     
-                    // 수식 처리
                     if (l.startsWith('$$') && l.endsWith('$$')) {{
                         return '<div class="math-block">' + inline(l.replace(/\\$\\$/g, '')) + '</div>';
                     }}
-                    // 표 처리
                     if (l.startsWith('|')) {{
                         const cells = l.split('|').filter(c => c.trim() !== '' || l.indexOf('|') !== l.lastIndexOf('|')).map(c => c.trim());
                         if (cells.length === 0 || l.includes('---')) return '';
                         return '<tr>' + cells.map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>';
                     }}
-                    // 제목 처리 및 UI 이미지 삽입
-                    if (l.startsWith('##')) {{
-                        return '<h2>' + l.replace(/^##\s*/, '') + '</h2>';
-                    }}
+                    if (l.startsWith('##')) return '<h2>' + l.replace(/^##\s*/, '') + '</h2>';
                     if (l.startsWith('###')) {{
                         const sub = l.replace(/^###\s*/, '');
                         let html = '<h3>' + sub + '</h3>';
-                        // UI/UX 목업 섹션일 경우 이미지 강제 삽입
                         if ((sub.includes('목업') || sub.includes('Mockup')) && data.images.ui) {{
                             html += createImgBox(data.images.ui, 'UI/UX Interface Mockup');
                         }}
                         return html;
                     }}
-                    
                     return '<p>' + inline(l) + '</p>';
                 }}).join('');
             }}
@@ -278,11 +268,9 @@ if st.session_state['gdd_result']:
 
             const bodyRoot = document.getElementById('body-content');
             let bodyHtml = parseContent(data.content);
-            // 표를 table 태그로 감싸기
             bodyHtml = bodyHtml.replace(/(<tr>.*?<\\/tr>)+/g, m => '<div style="overflow-x:auto;"><table>' + m + '</table></div>');
             bodyRoot.innerHTML = bodyHtml;
 
-            // 4. 이미지 저장
             document.getElementById('capture-btn').onclick = function() {{
                 this.innerText = "⏳ 렌더링 중...";
                 html2canvas(document.getElementById('gdd-paper'), {{ scale: 2, useCORS: true }}).then(canvas => {{
