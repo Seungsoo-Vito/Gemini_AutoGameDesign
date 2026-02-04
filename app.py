@@ -50,7 +50,7 @@ with st.sidebar:
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
-# --- 🎨 고화질 이미지 엔진 (Advanced Prompts) ---
+# --- 🎨 고화질 이미지 엔진 (Imagen 4.0) ---
 def generate_hd_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
@@ -83,7 +83,7 @@ with st.sidebar:
 
 # 메인 UI
 st.markdown('<h1 class="main-title">비토쨩 자동 기획서 만들기 🎮</h1>', unsafe_allow_html=True)
-st.write("제미나이를 활용한 연습. (마크다운 기호 제거 및 이미지 출력 보장 시스템 가동 중)")
+st.write("제미나이를 활용한 연습.")
 st.divider()
 
 # 입력 섹션
@@ -106,9 +106,10 @@ with st.container():
                 
                 [중요 지침]
                 1. 섹션 제목은 반드시 '## 제목' 형식을 사용하세요.
-                2. 본문의 **강조 텍스트**를 적극적으로 활용하세요.
+                2. 본문의 **강조 텍스트**를 적극적으로 활용하되 마크다운 기호가 그대로 남지 않도록 주의하세요.
                 3. 의미 없는 '#' 한 줄 구분선은 절대 넣지 마세요.
                 4. 전투 공식, 시너지 시스템, 경제 구조를 매우 구체적으로 기술하세요.
+                5. 복잡한 시스템이나 흐름은 반드시 | 헤더 | 마크다운 표 형식으로 작성하세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
@@ -121,7 +122,7 @@ with st.container():
                     "character": generate_hd_image("character", genre, art, key)
                 }
 
-# --- 🚀 [핵심] 마크다운 정화 및 이미지 강제 출력 엔진 ---
+# --- 🚀 [핵심] 마크다운 정화, 이미지 강제 출력, 표 렌더링 엔진 ---
 if st.session_state['gdd_result']:
     st.divider()
     
@@ -139,31 +140,77 @@ if st.session_state['gdd_result']:
         (function() {
             const data = JSON.parse('ST_DATA_JSON');
             
-            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기
+            // 🚀 마크다운 기호 제거 및 고품격 태그 변환기 (표 지원)
             function formatText(text) {
-                return text.split('\\n').map(line => {
+                const lines = text.split('\\n');
+                let result = [];
+                let inTable = false;
+                let tableData = [];
+
+                function flushTable() {
+                    if (tableData.length === 0) return '';
+                    let html = '<div style="margin:30px 0; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.05);">';
+                    tableData.forEach((row, idx) => {
+                        const cells = row.split('|').filter(c => c.trim() !== '' || row.indexOf('|') !== row.lastIndexOf('|')).map(c => c.trim());
+                        if (cells.length === 0) return;
+                        if (row.includes('---')) return; // 구분선 스킵
+
+                        if (idx === 0) {
+                            html += '<thead style="background:#4f46e5; color:white;"><tr>';
+                            cells.forEach(c => html += `<th style="padding:18px 20px; text-align:left; font-weight:700;">${processInline(c)}</th>`);
+                            html += '</tr></thead><tbody>';
+                        } else {
+                            html += '<tr style="border-bottom:1px solid #f1f5f9;">';
+                            cells.forEach(c => html += `<td style="padding:18px 20px; font-size:18px; color:#334155;">${processInline(c)}</td>`);
+                            html += '</tr>';
+                        }
+                    });
+                    html += '</tbody></table></div>';
+                    return html;
+                }
+
+                function processInline(t) {
+                    return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
+                }
+
+                lines.forEach(line => {
                     let l = line.trim();
-                    if (!l || l === '#' || l === '##') return '';
-                    
+                    if (!l || l === '#' || l === '##') {
+                        if (inTable) { result.push(flushTable()); tableData = []; inTable = false; }
+                        return;
+                    }
+
+                    // 표 감지
+                    if (l.startsWith('|')) {
+                        inTable = true;
+                        tableData.push(l);
+                        return;
+                    } else if (inTable) {
+                        result.push(flushTable());
+                        tableData = [];
+                        inTable = false;
+                    }
+
                     // ## 제목 변환
                     if (l.startsWith('##')) {
-                        return `<h2 style="font-size:36px; font-weight:900; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:25px; background:#f8fafc; margin-top:80px; margin-bottom:30px; border-radius:0 15px 15px 0;">${l.replace(/^##\s*/, '')}</h2>`;
+                        result.push(`<h2 style="font-size:36px; font-weight:900; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:25px; background:#f8fafc; margin-top:80px; margin-bottom:30px; border-radius:0 15px 15px 0;">${l.replace(/^##\s*/, '')}</h2>`);
                     }
                     // ### 소제목 변환
-                    if (l.startsWith('###')) {
-                        return `<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${l.replace(/^###\s*/, '')}</h3>`;
-                    }
-                    // 🌟 별표 기호(**) 제거 및 강조 적용
-                    if (l.includes('**')) {
-                        l = l.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
+                    else if (l.startsWith('###')) {
+                        result.push(`<h3 style="font-size:24px; font-weight:700; color:#1e293b; margin-top:40px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">${l.replace(/^###\s*/, '')}</h3>`);
                     }
                     // 불렛 포인트
-                    if (l.startsWith('* ') || l.startsWith('- ')) {
-                        return `<li style="font-size:21px; color:#475569; margin-bottom:15px; margin-left:25px; line-height:1.6; list-style-type:square;">${l.replace(/^[*|-]\s*/, '')}</li>`;
+                    else if (l.startsWith('* ') || l.startsWith('- ')) {
+                        result.push(`<li style="font-size:21px; color:#475569; margin-bottom:15px; margin-left:25px; line-height:1.6; list-style-type:square;">${processInline(l.replace(/^[*|-]\s*/, ''))}</li>`);
                     }
-                    
-                    return `<p style="font-size:21px; color:#334155; line-height:1.9; text-align:justify; margin-bottom:25px;">${l}</p>`;
-                }).join('');
+                    // 일반 본문
+                    else {
+                        result.push(`<p style="font-size:21px; color:#334155; line-height:1.9; text-align:justify; margin-bottom:25px;">${processInline(l)}</p>`);
+                    }
+                });
+
+                if (inTable) result.push(flushTable());
+                return result.join('');
             }
 
             function imgBox(b64, label) {
@@ -179,19 +226,16 @@ if st.session_state['gdd_result']:
             function renderAll() {
                 const root = document.getElementById('root-container');
                 
-                // 버튼 영역
                 let btns = `
                     <div style="display:flex; gap:30px; margin-bottom:60px; max-width:1200px; margin:0 auto;">
                         <button onclick="window.print()" style="flex:1; background:#4f46e5; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(79,70,229,0.3);">📄 PDF 문서로 저장하기</button>
                         <button id="imgDown" style="flex:1; background:#7c3aed; color:white; border:none; padding:30px; border-radius:20px; font-weight:900; cursor:pointer; font-size:22px; box-shadow:0 12px 30px rgba(124,58,237,0.3);">🖼️ 전체 리포트 이미지 저장</button>
                     </div>`;
 
-                // 문서 본체
                 let doc = `<div id="capture-page" style="background:white; padding:120px 100px; border-radius:40px; font-family:'Pretendard', sans-serif; color:#1e293b; max-width:1200px; margin:0 auto; border:1px solid #e2e8f0; box-shadow:0 40px 80px rgba(0,0,0,0.08);">`;
                 
                 doc += `<h1 style="font-size:80px; font-weight:900; text-align:center; border-bottom:15px solid #4f46e5; padding-bottom:50px; margin-bottom:100px; letter-spacing:-0.05em;">${data.title}</h1>`;
                 
-                // [1] 메인 비주얼
                 doc += imgBox(data.images.concept, 'PROJECT KEY VISUAL');
                 
                 const parts = data.content.split('## ');
@@ -203,10 +247,8 @@ if st.session_state['gdd_result']:
 
                 parts.forEach((sec, i) => {
                     if (!sec.trim()) return;
-                    // 텍스트 렌더링 (기호 제거 로직 포함)
                     doc += formatText((i > 0 ? '## ' : '') + sec);
                     
-                    // [2,3,4] 이미지 강제 순차 배치
                     if (i % 2 === 1 && availableImages.length > 0) {
                         const nextImg = availableImages.shift();
                         doc += imgBox(nextImg.data, nextImg.lbl);
@@ -216,7 +258,6 @@ if st.session_state['gdd_result']:
                 doc += `</div>`;
                 root.innerHTML = btns + doc;
 
-                // 이미지 저장 핸들러
                 document.getElementById('imgDown').onclick = function() {
                     this.innerText = "⏳ 고화질 렌더링 중 (잠시만 기다려주세요)...";
                     html2canvas(document.getElementById('capture-page'), { scale: 2, useCORS: true }).then(canvas => {
