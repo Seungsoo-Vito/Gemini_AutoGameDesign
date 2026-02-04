@@ -4,7 +4,7 @@ from fpdf import FPDF
 import re
 
 # 1. 페이지 설정 (넓은 화면 모드 적용)
-st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
+st.set_page_config(page_title="비토쨩 공부하기", layout="wide")
 
 # API 설정
 API_KEY = "AIzaSyDsZOnRpEaT6DYRmBtPn2GF_Zg6HmD8FBM"
@@ -73,8 +73,8 @@ def create_pdf(text, keywords):
     return pdf.output()
 
 # 2. 웹 화면 UI 구성
-st.title("🚀 비토쨩 자동 기획서 Pro")
-st.write("전문 PM의 분석과 시각적 레퍼런스가 포함된 고품격 기획서 생성기")
+st.title("비토쨩 자동 기획서")
+st.write("제미나이를 활용한 자동 기획서")
 st.divider()
 
 # 사이드바 설정
@@ -95,7 +95,7 @@ with col2:
     keywords = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프, 덱빌딩")
 
 # 3. 생성 로직
-if st.button("전문 기획서 및 레퍼런스 분석 생성 ✨", type="primary"):
+if st.button("자동 기획서 생성 ✨", type="primary"):
     if not keywords:
         st.warning("핵심 키워드를 입력해 주세요.")
     else:
