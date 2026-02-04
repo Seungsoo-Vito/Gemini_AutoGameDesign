@@ -65,7 +65,9 @@ def generate_hd_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
         "concept": f"A breathtaking high-quality masterpiece game key visual art, {genre}, theme: {key}, style: {art}. 8k resolution, cinematic lighting, professional digital art, epic scale.",
-        "ui": f"High-fidelity professional mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Dashboard, inventory, clean layout, inspired by {key}. Digital game design sheet, 4k."
+        "ui": f"High-fidelity professional mobile game UI/UX design mockup, {genre} HUD interface, style: {art}. Dashboard, inventory, clean layout, inspired by {key}. Digital game design sheet, 4k.",
+        "world": f"Environment concept art, immersive game world of {genre}, theme: {key}, style: {art}. Beautiful landscape, masterpiece lighting.",
+        "character": f"High-quality character concept portrait, {genre} unit, motif: {key}, style: {art}. Professional character asset sheet."
     }
     if prompt_type not in prompts: return None
     
@@ -94,11 +96,11 @@ with st.sidebar:
         for k, v in st.session_state['generated_images'].items():
             color = "#10b981" if v else "#ef4444"
             status = "준비됨" if v else "실패"
-            st.markdown(f"""<div class='status-card'>{k.upper()}: <b style='color:{color}'>{status}</b></div>""", unsafe_allow_html=True)
+            st.markdown(f"<div class='status-card'>{k.upper()}: <b style='color:{color}'>{status}</b></div>", unsafe_allow_html=True)
 
 # 메인 UI
 st.markdown('<h1 class="main-title">비토쨩 자동 기획서 만들기 B-Ver 🎮</h1>', unsafe_allow_html=True)
-st.write("제미나이를 활용한 연습. (좌측 텍스트 / 우측 이미지 분할 레이아웃)")
+st.write("제미나이를 활용한 연습. (좌측 기획서 / 우측 이미지 갤러리 분할 레이아웃)")
 st.divider()
 
 # 입력 섹션
@@ -124,24 +126,25 @@ with st.container():
                 2. 본문의 **강조 텍스트**를 적극적으로 활용하세요.
                 3. 전투 공식이나 성장 공식은 반드시 '$$ 공식 내용 $$' 형태의 LaTeX 문법으로 작성하세요.
                 4. '## UI/UX 전략 및 인터페이스 설계' 섹션을 반드시 포함하세요.
-                5. 위 섹션 하위에 '### UI/UX 목업' 항목을 만드세요.
-                6. 복잡한 시스템 설명은 | 헤더 | 마크다운 표 형식으로 작성하세요.
-                7. 의미 없는 '#' 한 줄 구분선은 절대 넣지 마세요.
+                5. 복잡한 시스템 설명은 | 헤더 | 마크다운 표 형식으로 작성하세요.
+                6. 의미 없는 '#' 한 줄 구분선은 절대 넣지 마세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
                 
-                # 이미지 생성
+                # 이미지 생성 4종 (전체 리소스 확보)
                 st.session_state['generated_images'] = {
                     "concept": generate_hd_image("concept", genre, art, key),
-                    "ui": generate_hd_image("ui", genre, art, key)
+                    "world": generate_hd_image("world", genre, art, key),
+                    "ui": generate_hd_image("ui", genre, art, key),
+                    "character": generate_hd_image("character", genre, art, key)
                 }
 
-# --- 🚀 [핵심] B 버전: 좌우 분할 렌더링 엔진 ---
+# --- 🚀 [핵심] B 버전: 좌우 분할 렌더링 엔진 (A버전 정화 로직 통합) ---
 if st.session_state['gdd_result']:
     st.divider()
     
-    # 데이터 안전 전송
+    # 데이터 안전 전송용 JSON (중괄호 충돌 방지)
     safe_data = json.dumps({
         "title": f"{key.upper()} 기획안",
         "content": st.session_state['gdd_result'],
@@ -162,14 +165,14 @@ if st.session_state['gdd_result']:
         
         body { background: #f1f5f9; padding: 20px; font-family: 'Pretendard', sans-serif; color: #1e293b; }
         
-        /* 2. 상단 컨트롤 바 */
+        /* 2. 상단 컨트롤 바 (기획서 외부 분리) */
         .control-bar {
             max-width: 1400px; margin: 0 auto 30px auto;
             display: flex; gap: 20px;
         }
         .btn {
-            flex: 1; padding: 20px; border-radius: 12px;
-            font-size: 18px; font-weight: 900; cursor: pointer; border: none;
+            flex: 1; padding: 22px; border-radius: 14px;
+            font-size: 19px; font-weight: 900; cursor: pointer; border: none;
             transition: all 0.3s ease; color: white;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
@@ -188,26 +191,26 @@ if st.session_state['gdd_result']:
         
         .split-container { display: flex; gap: 50px; align-items: flex-start; }
         
-        /* 좌측: 기획서 텍스트 영역 */
+        /* 좌측: 기획서 텍스트 영역 (65%) */
         .text-column { flex: 0 0 65%; border-right: 2px solid #f1f5f9; padding-right: 40px; }
         
-        /* 우측: 이미지 갤러리 영역 */
+        /* 우측: 이미지 갤러리 영역 (35%) */
         .image-column { flex: 1; position: sticky; top: 40px; display: flex; flex-direction: column; gap: 40px; }
 
-        /* 4. 세부 요소 스타일링 */
+        /* 4. A버전 스타일링 이식 */
         h2 { font-size: 32px; font-weight: 800; color: #4f46e5; margin-top: 50px; margin-bottom: 25px; padding-left: 15px; border-left: 8px solid #4f46e5; background: #f8fafc; padding-top: 10px; padding-bottom: 10px; border-radius: 0 8px 8px 0; }
         h3 { font-size: 24px; font-weight: 700; color: #1e293b; margin-top: 35px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
-        p { font-size: 19px; line-height: 1.8; margin-bottom: 20px; text-align: justify; color: #334155; }
+        p { font-size: 19px; line-height: 1.85; margin-bottom: 22px; text-align: justify; color: #334155; }
         
-        .math-block { background: #f8faff; border: 1px solid #c7d2fe; padding: 25px; border-radius: 12px; text-align: center; font-size: 20px; font-weight: 700; margin: 30px 0; color: #3730a3; }
+        .math-block { background: #f8faff; border-top: 2px solid #c7d2fe; border-bottom: 2px solid #c7d2fe; padding: 25px; border-radius: 8px; text-align: center; font-size: 22px; font-weight: 700; margin: 35px 0; color: #3730a3; font-family: 'Times New Roman', serif; }
         
-        table { width: 100%; border-collapse: collapse; margin: 25px 0; border-radius: 8px; overflow: hidden; font-size: 16px; }
-        th { background: #4f46e5; color: white; padding: 12px; text-align: left; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; color: #475569; border: 1px solid #f1f5f9; }
+        table { width: 100%; border-collapse: collapse; margin: 25px 0; border-radius: 12px; overflow: hidden; font-size: 17px; border: 1px solid #e2e8f0; }
+        th { background: #4f46e5; color: white; padding: 15px; text-align: left; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; color: #475569; }
 
-        .img-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 16px; text-align: center; }
-        .img-card img { width: 100%; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .img-label { font-size: 14px; color: #64748b; font-weight: 700; margin-top: 12px; font-style: italic; }
+        .img-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 18px; border-radius: 20px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        .img-card img { width: 100%; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        .img-label { font-size: 15px; color: #64748b; font-weight: 800; margin-top: 15px; font-style: italic; text-transform: uppercase; letter-spacing: 1px; }
         
         hr { border: none; border-top: 1px solid #e2e8f0; margin: 40px 0; }
     </style>
@@ -219,14 +222,15 @@ if st.session_state['gdd_result']:
 
     <div id="capture-page">
         <div class="main-header">
-            <h1 style="font-size: 60px; font-weight: 900; margin: 0; letter-spacing: -0.04em;">${data.title}</h1>
+            <!-- 타이틀 오류 수정: 변수 직접 참조 -->
+            <h1 id="main-title-display" style="font-size: 60px; font-weight: 900; margin: 0; letter-spacing: -0.04em; color: #1e293b;"></h1>
         </div>
         
         <div class="split-container">
-            <!-- 좌측: 텍스트 및 시스템 설명 -->
+            <!-- 좌측: 기획서 텍스트 영역 -->
             <div class="text-column" id="text-root"></div>
             
-            <!-- 우측: 시각적 리소스 갤러리 -->
+            <!-- 우측: 이미지 갤러리 영역 -->
             <div class="image-column" id="image-root"></div>
         </div>
     </div>
@@ -234,42 +238,50 @@ if st.session_state['gdd_result']:
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script>
         (function() {
+            // 데이터 파싱
             const data = JSON.parse('ST_DATA_JSON');
             
-            // 🚀 마크다운 텍스트 처리
+            // 1. 타이틀 표시 수정
+            document.getElementById('main-title-display').innerText = data.title;
+            
+            // 2. 텍스트 정화 엔진 (A버전 로직)
             function parseContent(text) {
                 return text.split('\\n').map(line => {
                     let l = line.trim();
                     if (!l || l === '#' || l === '##' || l === '###') return '';
 
-                    // 수식 처리
+                    // [수식 처리] $$ 제거 및 디자인 적용
                     if (l.startsWith('$$') && l.endsWith('$$')) {
-                        return `<div class="math-block">${processInline(l.replace(/\\$\\$/g, ''))}</div>`;
+                        return '<div class="math-block">' + processInline(l.replace(/\\$\\$/g, '')) + '</div>';
                     }
                     
-                    // 표 처리
+                    // [표 처리] | 감지
                     if (l.startsWith('|')) {
                         const cells = l.split('|').filter(c => c.trim() !== '' || l.indexOf('|') !== l.lastIndexOf('|')).map(c => c.trim());
                         if (cells.length === 0 || l.includes('---')) return '';
-                        return `<tr>${cells.map(c => `<td>${processInline(c)}</td>`).join('')}</tr>`;
+                        return '<tr>' + cells.map(c => '<td>' + processInline(c) + '</td>').join('') + '</tr>';
                     }
 
-                    // 제목 처리
+                    // [제목 처리]
                     if (l.startsWith('##')) {
-                        return `<h2>${l.replace(/^##\s*/, '')}</h2>`;
+                        return '<h2>' + l.replace(/^##\s*/, '') + '</h2>';
                     }
                     if (l.startsWith('###')) {
-                        return `<h3>${l.replace(/^###\s*/, '')}</h3>`;
+                        return '<h3>' + l.replace(/^###\s*/, '') + '</h3>';
                     }
                     
-                    // 구분선
+                    // [구분선 처리]
                     if (l === '---' || l === '***') return '<hr>';
 
-                    return `<p>${processInline(l)}</p>`;
+                    // [이미지 치환자 제거] 본문 텍스트에서는 태그가 보이지 않게 처리
+                    if (l.includes('[IMAGE_UI_MOCKUP]')) return '';
+
+                    return '<p>' + processInline(l) + '</p>';
                 }).join('');
             }
 
             function processInline(t) {
+                // **별표 강조** 제거 및 LaTeX 기호 정화
                 return t
                     .replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>')
                     .replace(/\\\\text\{(.*?)\}/g, '$1')
@@ -277,41 +289,45 @@ if st.session_state['gdd_result']:
                     .replace(/\\\\cdot/g, '·');
             }
 
-            function createImgCard(b64, label) {
-                if (!b64) return '';
-                const src = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
-                return `
-                    <div class="img-card">
-                        <img src="${src}">
-                        <div class="img-label">[REF: ${label}]</div>
-                    </div>`;
+            function createImgCard(base64, label) {
+                if (!base64) return '';
+                const src = base64.startsWith('data:') ? base64 : 'data:image/png;base64,' + base64;
+                return '<div class="img-card"><img src="' + src + '"><div class="img-label">[REF: ' + label + ']</div></div>';
             }
 
-            // 빌드 실행
+            // 3. 빌드 실행
             const textRoot = document.getElementById('text-root');
             const imageRoot = document.getElementById('image-root');
             
-            // 텍스트 렌더링
-            let body = parseContent(data.content);
-            body = body.replace(/(<tr>.*?<\\/tr>)+/g, m => `<div style="overflow-x:auto;"><table>${m}</table></div>`);
-            textRoot.innerHTML = body;
+            // 텍스트 렌더링 (표 래핑 포함)
+            let bodyHtml = parseContent(data.content);
+            bodyHtml = bodyHtml.replace(/(<tr>.*?<\\/tr>)+/g, m => '<div style="overflow-x:auto;"><table>' + m + '</table></div>');
+            textRoot.innerHTML = bodyHtml;
             
             // 이미지 렌더링 (우측 배치)
-            let imgHtml = "";
-            imgHtml += createImgCard(data.images.concept, 'PROJECT KEY VISUAL');
-            imgHtml += createImgCard(data.images.ui, 'UI/UX SYSTEM MOCKUP');
-            imageRoot.innerHTML = imgHtml;
+            let galleryHtml = "";
+            if(data.images.concept) galleryHtml += createImgCard(data.images.concept, 'PROJECT CORE VISUAL');
+            if(data.images.world) galleryHtml += createImgCard(data.images.world, 'WORLD ENVIRONMENT');
+            if(data.images.ui) galleryHtml += createImgCard(data.images.ui, 'UI/UX SYSTEM MOCKUP');
+            if(data.images.character) galleryHtml += createImgCard(data.images.character, 'MAIN CHARACTER ASSET');
+            
+            imageRoot.innerHTML = galleryHtml;
 
-            // 저장 핸들러
+            // 4. 저장 핸들러
             document.getElementById('capImg').onclick = function() {
                 const btn = this;
+                const originalText = btn.innerText;
                 btn.innerText = "⏳ 렌더링 중...";
-                html2canvas(document.getElementById('capture-page'), { scale: 2, useCORS: true }).then(canvas => {
+                html2canvas(document.getElementById('capture-page'), { 
+                    scale: 2.5, 
+                    useCORS: true,
+                    backgroundColor: "#ffffff"
+                }).then(canvas => {
                     const a = document.createElement('a');
-                    a.download = `Vito_B_Report_${data.title}.png`;
+                    a.download = 'Vito_B_Premium_Report.png';
                     a.href = canvas.toDataURL('image/png');
                     a.click();
-                    btn.innerText = "🖼️ 고화질 이미지 저장";
+                    btn.innerText = originalText;
                 });
             };
         })();
@@ -320,6 +336,6 @@ if st.session_state['gdd_result']:
     
     # 데이터 주입 및 출력
     final_html = html_code.replace("ST_DATA_JSON", safe_data)
-    components.html(final_html, height=7000, scrolling=True)
+    components.html(final_html, height=8000, scrolling=True)
 
 st.caption("비토쨩 연습하기")
