@@ -5,6 +5,7 @@ import base64
 import json
 import io
 import re
+import streamlit.components.v1 as components  # 💡 에러 방지를 위해 임포트를 최상단으로 이동
 
 # 1. 페이지 설정
 st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
@@ -106,7 +107,6 @@ def generate_image(prompt_type, genre, art, key):
         response = requests.post(url, json=payload, timeout=120)
         if response.status_code == 200:
             res_json = response.json()
-            # 응답 구조 확인 후 데이터 추출
             if "predictions" in res_json and len(res_json["predictions"]) > 0:
                 return res_json["predictions"][0]["bytesBase64Encoded"]
     except Exception:
@@ -136,7 +136,7 @@ with st.container():
                 model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
                 prompt = f"""
                 당신은 전설적인 게임 기획자입니다. 
-                장르: {genre}, 타겟: {target}, 스타일: {art}, 키워: {key} 조건으로 전문 GDD를 작성하세요.
+                장르: {genre}, 타겟: {target}, 스타일: {art}, 키워드: {key} 조건으로 전문 GDD를 작성하세요.
                 
                 [필수 구조]
                 1. ## 제목 (상위 카테고리)
@@ -161,12 +161,13 @@ with st.container():
 if st.session_state['gdd_result']:
     st.divider()
     
-    # 데이터 안전 직렬화
+    # 데이터 안전 직렬화 및 JSON 생성
     payload_data = {
         "title": f"{key.upper()} PROJECT GDD",
         "content": st.session_state['gdd_result'],
         "images": st.session_state['images']
     }
+    # 💡 JavaScript에서 안전하게 읽을 수 있도록 특수 문자 이스케이프 강화
     payload_json = json.dumps(payload_data).replace("\\", "\\\\").replace("'", "\\'")
 
     html_template = f"""
@@ -206,7 +207,6 @@ if st.session_state['gdd_result']:
         td {{ padding: 15px; border: 1px solid #f1f5f9; font-size: 18px; }}
         
         .img-container {{ text-align: center; margin: 60px 0; padding: 30px; background: #f8fafc; border-radius: 24px; border: 1px solid #e2e8f0; }}
-        /* 이미지 사이즈 제약을 100%로 유연하게 변경 */
         .img-container img {{ width: 100%; height: auto; border-radius: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }}
         .img-label {{ font-size: 16px; color: #6366f1; font-weight: 800; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px; }}
     </style>
@@ -284,4 +284,5 @@ if st.session_state['gdd_result']:
         }})();
     </script>
     """
+    # 💡 components.html 호출 시 components가 정의되어 있어야 함
     components.html(html_template, height=8000, scrolling=True)
