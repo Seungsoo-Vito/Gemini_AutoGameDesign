@@ -28,19 +28,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 🔒 API 설정 (사이드바) ---
+# --- 🔒 API 설정 및 사이드바 제어 ---
 def get_api_key():
     if "GEMINI_API_KEY" in st.secrets: return st.secrets["GEMINI_API_KEY"]
     if "api_key" in st.session_state: return st.session_state["api_key"]
     return ""
 
+# API 키 상태 확인
+current_api_key = get_api_key()
+
 with st.sidebar:
     st.header("🔑 API 설정")
-    user_key = st.text_input("Gemini API Key", type="password", value=get_api_key())
-    if user_key:
-        st.session_state["api_key"] = user_key
-        genai.configure(api_key=user_key)
-        st.success("API 키 설정 완료")
+    if current_api_key:
+        # API 키가 설정되어 있으면 입력창을 숨기고 메시지만 표시
+        st.success("✅ API 키 설정 완료")
+        genai.configure(api_key=current_api_key)
+    else:
+        # API 키가 없으면 입력창 표시
+        user_key = st.text_input("Gemini API Key를 입력하세요", type="password")
+        if user_key:
+            st.session_state["api_key"] = user_key
+            genai.configure(api_key=user_key)
+            st.rerun()
 
 # 세션 상태 관리
 if 'gdd_result' not in st.session_state: st.session_state['gdd_result'] = None
@@ -48,7 +57,7 @@ if 'images' not in st.session_state: st.session_state['images'] = {}
 
 # --- 🖼️ 이미지 생성 함수 (규격 엄수) ---
 def generate_image(prompt_type, genre, art, key):
-    api_key = st.session_state.get("api_key", "")
+    api_key = get_api_key()
     if not api_key: return None
     
     prompts = {
@@ -59,7 +68,6 @@ def generate_image(prompt_type, genre, art, key):
     }
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={api_key}"
-    # 시스템 가이드라인에 따른 정확한 Payload 구조
     payload = {
         "instances": { "prompt": prompts.get(prompt_type, "") },
         "parameters": { "sampleCount": 1 }
@@ -77,7 +85,7 @@ def generate_image(prompt_type, genre, art, key):
 # --- 🏠 메인 화면 ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro B-Ver 🎮</h1>', unsafe_allow_html=True)
 
-# 입력 영역 (4개 옵션으로 복구)
+# 입력 영역
 with st.container():
     c1, c2 = st.columns(2)
     with c1: genre = st.selectbox("장르", ["방치형 RPG", "수집형 RPG", "MMORPG", "로그라이크", "전략 시뮬레이션"])
@@ -88,8 +96,8 @@ with st.container():
     with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 차원이동")
     
     if st.button("고품격 기획서 & 이미지 생성 시작 ✨", type="primary"):
-        if not st.session_state.get("api_key"):
-            st.error("사이드바에서 API 키를 먼저 입력해주세요.")
+        if not get_api_key():
+            st.error("사이드바에서 API 키를 먼저 설정해주세요.")
         elif not key:
             st.warning("키워드를 입력해주세요.")
         else:
