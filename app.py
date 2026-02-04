@@ -8,15 +8,14 @@ import re
 import os.path
 import streamlit.components.v1 as components
 
-# 1. Page Configuration (모바일 최적화 레이아웃)
+# 1. Page Configuration
 st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
 
-# --- 🎨 Responsive High-End UI Styling ---
+# --- 🎨 High-End Responsive UI Styling ---
 st.markdown("""
     <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     
-    /* 전체 앱 기본 스타일 */
     .stApp { 
         background-color: #f8fafc; 
         color: #1e293b; 
@@ -33,7 +32,6 @@ st.markdown("""
         margin-bottom: 1rem !important;
     }
     
-    /* 📸 기획서 캡처 영역 (모바일 대응) */
     #gdd-capture-area {
         background: #ffffff;
         padding: 40px 20px;
@@ -47,7 +45,6 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
     
-    /* 이미지 반응형 처리 */
     #gdd-capture-area img {
         max-width: 100% !important;
         height: auto !important;
@@ -56,7 +53,6 @@ st.markdown("""
         margin: 20px auto;
     }
 
-    /* PC에서 이미지가 너무 커지지 않게 제한 */
     .img-wrapper {
         max-width: 800px;
         margin: 0 auto;
@@ -73,7 +69,6 @@ st.markdown("""
         margin-bottom: 35px;
     }
 
-    /* 버튼 스타일 */
     div.stButton > button {
         width: 100%;
         border-radius: 12px !important;
@@ -141,7 +136,7 @@ with st.sidebar:
 
 # --- 4. UI Main ---
 st.markdown('<h1 class="main-title">비토쨩 GDD Pro 🎮</h1>', unsafe_allow_html=True)
-st.write("모바일 환경에서 이미지가 최적화되어 표시되는 버전입니다.")
+st.write("저장 기능이 강화된 고품격 게임 기획서 생성 도구입니다.")
 st.divider()
 
 # Input Section
@@ -172,17 +167,16 @@ with st.container():
                 st.session_state['generated_images'] = imgs
                 st.session_state['history'].append({"key": key, "content": gdd_res.text, "images": imgs})
 
-# Result Display
+# Result Display Logic
 if st.session_state['gdd_result']:
     st.divider()
     
-    # 📸 Responsive GDD Content Area
+    # 📸 GDD 렌더링 (미리보기용)
     st.markdown('<div id="gdd-capture-area">', unsafe_allow_html=True)
     st.markdown(f"<h1>{key.upper()} 기획안</h1>", unsafe_allow_html=True)
     
     imgs = st.session_state['generated_images']
     
-    # 메인 이미지 (반응형 래퍼)
     if imgs.get("concept"):
         st.markdown('<div class="img-wrapper">', unsafe_allow_html=True)
         st.image(base64.b64decode(imgs["concept"]), use_container_width=True)
@@ -190,13 +184,13 @@ if st.session_state['gdd_result']:
         st.markdown('<p class="img-caption">[Main Visual Concept]</p>', unsafe_allow_html=True)
 
     content = st.session_state['gdd_result']
+    # 마크다운 렌더링을 위해 간단한 HTML 변환 대신 st.markdown 사용
     sections = content.split("## ")
     for i, section in enumerate(sections):
         if not section.strip(): continue
         sec_text = "## " + section if i > 0 else section
         st.markdown(sec_text) 
         
-        # 섹션별 이미지 삽입 (모바일 대응)
         if i == 1 and imgs.get("world"):
             st.markdown('<div class="img-wrapper">', unsafe_allow_html=True)
             st.image(base64.b64decode(imgs["world"]), use_container_width=True)
@@ -215,42 +209,109 @@ if st.session_state['gdd_result']:
             
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 📥 Download Logic
+    # --- 📥 저장 엔진 (보안 및 격리벽 해결) ---
     st.write("---")
-    col1, col2 = st.columns(2)
     
-    with col1:
-        if st.button("📄 PDF 저장 (새 창)", use_container_width=True):
-            components.html(f"""
-                <script>
-                const content = window.parent.document.getElementById('gdd-capture-area').innerHTML;
-                const win = window.open('', '_blank');
-                win.document.write('<html><head><title>GDD_{key}</title>');
-                win.document.write('<style>body{{font-family:sans-serif;padding:30px;}}img{{max-width:100%;height:auto;}}h1{{border-bottom:4px solid #6366f1;}}</style></head><body>');
-                win.document.write(content);
-                win.document.write('</body></html>');
-                win.document.close();
-                win.onload = () => win.print();
-                </script>
-            """, height=0)
+    # 자바스크립트에 전달할 데이터 준비
+    export_data = {
+        "title": f"{key.upper()} 기획안",
+        "content": st.session_state['gdd_result'],
+        "images": st.session_state['generated_images']
+    }
+    
+    # 고도화된 export 컴포넌트
+    components.html(f"""
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button id="pdfBtn" style="flex:1; background: #6366f1; color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px;">
+                📄 PDF 저장 (새 창)
+            </button>
+            <button id="pngBtn" style="flex:1; background: #a855f7; color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px;">
+                🖼️ 이미지(PNG) 저장
+            </button>
+        </div>
+        
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+        <script>
+            const data = {json.dumps(export_data)};
+            
+            // 헬퍼: HTML 문서 생성
+            function createPrintHTML(data) {{
+                let html = `<html><head><title>${{data.title}}</title>`;
+                html += `<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">`;
+                html += `<style>
+                    body {{ font-family: 'Pretendard', sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: 0 auto; }}
+                    h1 {{ font-size: 32px; border-bottom: 4px solid #6366f1; padding-bottom: 10px; text-align: center; }}
+                    h2 {{ color: #4f46e5; margin-top: 30px; border-left: 5px solid #6366f1; padding-left: 10px; }}
+                    img {{ max-width: 100%; border-radius: 8px; margin: 20px 0; }}
+                    p, li {{ font-size: 16px; line-height: 1.6; margin-bottom: 10px; }}
+                    .caption {{ text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 20px; }}
+                </style></head><body>`;
+                
+                html += `<h1>${{data.title}}</h1>`;
+                
+                if(data.images.concept) {{
+                    html += `<img src="data:image/png;base64,${{data.images.concept}}"><div class="caption">[Main Visual]</div>`;
+                }}
+                
+                const sections = data.content.split('## ');
+                sections.forEach((sec, i) => {{
+                    if(!sec.trim()) return;
+                    html += '<h2>' + (i > 0 ? '## ' : '') + sec.replace(/\\n/g, '<br>') + '</h2>';
+                    
+                    if(i === 1 && data.images.world) html += `<img src="data:image/png;base64,${{data.images.world}}"><div class="caption">[World]</div>`;
+                    if(i === 3 && data.images.ui) html += `<img src="data:image/png;base64,${{data.images.ui}}"><div class="caption">[UI/UX]</div>`;
+                    if(i === 5 && data.images.asset) html += `<img src="data:image/png;base64,${{data.images.asset}}"><div class="caption">[Asset]</div>`;
+                }});
+                
+                html += `</body></html>`;
+                return html;
+            }}
 
-    with col2:
-        if st.button("🖼️ 이미지(PNG) 저장", use_container_width=True):
-            components.html(f"""
-                <script>
-                const script = document.createElement('script');
-                script.src = "https://html2canvas.hertzen.com/dist/html2canvas.min.js";
-                script.onload = () => {{
-                    const area = window.parent.document.getElementById('gdd-capture-area');
-                    html2canvas(area, {{ useCORS: true, scale: 2 }}).then(canvas => {{
+            // PDF/인쇄 기능
+            document.getElementById('pdfBtn').onclick = () => {{
+                const win = window.open('', '_blank');
+                win.document.write(createPrintHTML(data));
+                win.document.close();
+                win.onload = () => {{
+                    win.focus();
+                    win.print();
+                }};
+            }};
+
+            // 이미지 저장 기능
+            document.getElementById('pngBtn').onclick = () => {{
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                tempDiv.style.width = '800px';
+                tempDiv.innerHTML = createPrintHTML(data);
+                document.body.appendChild(tempDiv);
+
+                const btn = document.getElementById('pngBtn');
+                btn.innerText = "⏳ 처리 중...";
+                btn.disabled = true;
+
+                setTimeout(() => {{
+                    html2canvas(tempDiv, {{ 
+                        useCORS: true, 
+                        scale: 2,
+                        backgroundColor: "#ffffff"
+                    }}).then(canvas => {{
                         const link = document.createElement('a');
-                        link.download = 'GDD_{key}.png';
+                        link.download = `GDD_${{data.title}}.png`;
                         link.href = canvas.toDataURL('image/png');
                         link.click();
+                        btn.innerText = "🖼️ 이미지(PNG) 저장";
+                        btn.disabled = false;
+                        document.body.removeChild(tempDiv);
+                    }}).catch(err => {{
+                        alert("이미지 생성 중 오류가 발생했습니다.");
+                        console.error(err);
+                        btn.disabled = false;
                     }});
-                }};
-                document.head.appendChild(script);
-                </script>
-            """, height=0)
+                }}, 500);
+            }};
+        </script>
+    """, height=100)
 
-st.caption("비토쨩 GDD Pro | Optimized for Mobile & Desktop")
+st.caption("비토쨩 GDD Pro | Secure Export System Active")
