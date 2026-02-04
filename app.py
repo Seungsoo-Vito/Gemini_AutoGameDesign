@@ -4,7 +4,7 @@ from fpdf import FPDF
 import re
 
 # 1. 페이지 설정 (넓은 화면 모드 적용)
-st.set_page_config(page_title="비토쨩 공부하기", layout="wide")
+st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
 
 # API 설정
 API_KEY = "AIzaSyDsZOnRpEaT6DYRmBtPn2GF_Zg6HmD8FBM"
@@ -25,6 +25,12 @@ REFERENCE_IMAGES = {
 # 세션 상태 초기화
 if 'gdd_result' not in st.session_state:
     st.session_state['gdd_result'] = None
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+if 'current_keywords' not in st.session_state:
+    st.session_state['current_keywords'] = ""
+if 'current_genre' not in st.session_state:
+    st.session_state['current_genre'] = ""
 
 # --- 📄 PDF 생성 함수 개선 (오류 수정 및 최적화) ---
 def create_pdf(text, keywords):
@@ -59,7 +65,6 @@ def create_pdf(text, keywords):
         pdf.set_font('Arial', size=11)
 
     # 줄바꿈 처리 및 텍스트 출력
-    # 에러 방지를 위해 multi_cell의 너비를 명시적으로 지정 (0 대신 실질적 너비 계산)
     page_width = pdf.w - 2 * pdf.l_margin
     
     lines = clean_text.split('\n')
@@ -67,14 +72,13 @@ def create_pdf(text, keywords):
         if line.strip() == "":
             pdf.ln(4)
         else:
-            # fpdf2의 multi_cell 안정성을 위해 문자열 앞뒤 공백 제거 후 출력
             pdf.multi_cell(page_width, 8, txt=line.strip())
             
     return pdf.output()
 
 # 2. 웹 화면 UI 구성
-st.title("비토쨩 자동 기획서")
-st.write("제미나이를 활용한 자동 기획서")
+st.title("🚀 비토쨩 자동 기획서 Pro")
+st.write("전문 PM의 분석과 시각적 레퍼런스가 포함된 고품격 기획서 생성기")
 st.divider()
 
 # 사이드바 설정
@@ -82,6 +86,24 @@ with st.sidebar:
     st.header("📋 기획 옵션")
     detail_level = st.select_slider("내용 상세도", options=["표준", "상세", "전문가"])
     st.info(f"선택된 상세도: {detail_level}")
+    
+    st.divider()
+    
+    # 히스토리 섹션
+    st.header("🕒 기획 히스토리")
+    if not st.session_state['history']:
+        st.write("아직 생성된 기획서가 없습니다.")
+    else:
+        # 히스토리 리스트 표시 (최신순)
+        for i, item in enumerate(reversed(st.session_state['history'])):
+            if st.button(f"📄 {item['keywords']} ({item['genre']})", key=f"hist_{i}"):
+                st.session_state['gdd_result'] = item['content']
+                st.session_state['current_keywords'] = item['keywords']
+                st.session_state['current_genre'] = item['genre']
+        
+        if st.button("히스토리 모두 비우기"):
+            st.session_state['history'] = []
+            st.rerun()
 
 # 메인 입력창
 col1, col2 = st.columns([1, 1])
@@ -95,7 +117,7 @@ with col2:
     keywords = st.text_input("핵심 키워드", placeholder="예: 고양이, 타임루프, 덱빌딩")
 
 # 3. 생성 로직
-if st.button("자동 기획서 생성 ✨", type="primary"):
+if st.button("전문 기획서 및 레퍼런스 분석 생성 ✨", type="primary"):
     if not keywords:
         st.warning("핵심 키워드를 입력해 주세요.")
     else:
@@ -120,7 +142,19 @@ if st.button("자동 기획서 생성 ✨", type="primary"):
             try:
                 model = genai.GenerativeModel('gemini-flash-latest')
                 response = model.generate_content(prompt)
-                st.session_state['gdd_result'] = response.text
+                
+                # 결과 저장
+                result_text = response.text
+                st.session_state['gdd_result'] = result_text
+                st.session_state['current_keywords'] = keywords
+                st.session_state['current_genre'] = genre
+                
+                # 히스토리에 추가
+                st.session_state['history'].append({
+                    "keywords": keywords,
+                    "genre": genre,
+                    "content": result_text
+                })
                 
             except Exception as e:
                 st.error(f"생성 중 오류 발생: {e}")
@@ -129,36 +163,38 @@ if st.button("자동 기획서 생성 ✨", type="primary"):
 if st.session_state['gdd_result']:
     st.divider()
     
-    # PDF 다운로드 버튼 상단 배치
-    try:
-        pdf_bytes = create_pdf(st.session_state['gdd_result'], keywords)
-        st.download_button(
-            label="📄 완성된 기획서 PDF 다운로드",
-            data=bytes(pdf_bytes),
-            file_name=f"GDD_Pro_{keywords}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
-    except Exception as e:
-        st.error(f"PDF 생성 중 문제가 발생했습니다: {e}")
-
     # 기획서 본문 및 이미지 통합 출력
-    st.subheader("📝 기획서 본문 및 시각적 레퍼런스")
+    st.subheader(f"📝 기획서 본문: {st.session_state['current_keywords']}")
     
-    # 텍스트 섹션별로 나누어 이미지 삽입 (단순 파싱 로직)
+    # 텍스트 섹션별로 나누어 이미지 삽입
     sections = st.session_state['gdd_result'].split('\n\n')
+    current_genre = st.session_state['current_genre']
     
     for i, section in enumerate(sections):
         st.markdown(section)
         
         # 특정 섹션 뒤에 레퍼런스 이미지 삽입
         if i == 0: # Concept Summary 뒤
-            st.image(REFERENCE_IMAGES[genre], caption=f"레퍼런스: {genre} 컨셉 비주얼", width=700)
+            st.image(REFERENCE_IMAGES.get(current_genre, REFERENCE_IMAGES["방치형 RPG"]), caption=f"레퍼런스: {current_genre} 컨셉 비주얼", width=700)
         elif "World Building" in section or i == 2:
             st.image(REFERENCE_IMAGES["World Building"], caption="레퍼런스: 세계관 분위기 가이드", width=700)
         elif "Core Loop" in section:
             st.image(REFERENCE_IMAGES["Core Loop"], caption="레퍼런스: 게임 시스템 흐름 예시", width=700)
         elif "UI/UX" in section:
             st.image(REFERENCE_IMAGES["UI/UX"], caption="레퍼런스: 인터페이스 및 사용자 경험 설계", width=700)
+
+    # PDF 다운로드 버튼을 최하단으로 이동
+    st.divider()
+    try:
+        pdf_bytes = create_pdf(st.session_state['gdd_result'], st.session_state['current_keywords'])
+        st.download_button(
+            label=f"📄 [{st.session_state['current_keywords']}] 기획서 PDF 다운로드",
+            data=bytes(pdf_bytes),
+            file_name=f"GDD_Pro_{st.session_state['current_keywords']}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"PDF 생성 중 문제가 발생했습니다: {e}")
 
 st.caption("비토쨩이 테스트로 만들었단다.")
