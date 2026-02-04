@@ -55,16 +55,17 @@ st.markdown("""
     
     /* 이미지 및 캡션 최적화 */
     .img-wrapper {
-        max-width: 700px; /* 사용자 요청 크기 고정 */
+        max-width: 700px; /* 사용자 요청: 너무 크지 않게 */
         margin: 35px auto;
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         border: 1px solid #f1f5f9;
     }
     
     .img-wrapper img {
         width: 100%;
+        height: auto;
         display: block;
     }
     
@@ -74,16 +75,17 @@ st.markdown("""
         text-align: center;
         margin-top: -25px;
         margin-bottom: 45px;
-        font-weight: 500;
+        font-weight: 600;
         font-style: italic;
     }
     
     /* 마크다운 요소별 디테일 디자인 */
-    h1.gdd-h1 { font-size: 2.8rem; font-weight: 900; text-align: center; margin-bottom: 35px; color: #1e293b; border-bottom: 6px solid #4f46e5; padding-bottom: 15px; }
-    h2.gdd-h2 { font-size: 1.7rem; font-weight: 800; color: #4f46e5; margin-top: 45px; margin-bottom: 18px; border-left: 10px solid #4f46e5; padding: 10px 18px; background: #f8fafc; border-radius: 0 8px 8px 0; }
-    h3.gdd-h3 { font-size: 1.3rem; font-weight: 700; margin-top: 28px; margin-bottom: 12px; color: #334155; border-bottom: 2px solid #f1f5f9; padding-bottom: 6px; }
-    .gdd-p { font-size: 1.05rem; margin-bottom: 16px; color: #334155; text-align: justify; word-break: keep-all; }
-    .gdd-li { font-size: 1rem; margin-bottom: 8px; color: #475569; }
+    h1.gdd-h1 { font-size: 2.8rem; font-weight: 900; text-align: center; margin-bottom: 40px; color: #1e293b; border-bottom: 8px solid #4f46e5; padding-bottom: 20px; }
+    h2.gdd-h2 { font-size: 1.7rem; font-weight: 800; color: #4f46e5; margin-top: 55px; margin-bottom: 20px; border-left: 10px solid #4f46e5; padding: 12px 20px; background: #f8fafc; border-radius: 0 8px 8px 0; }
+    h3.gdd-h3 { font-size: 1.3rem; font-weight: 700; margin-top: 35px; margin-bottom: 15px; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
+    .gdd-p { font-size: 1.1rem; margin-bottom: 18px; color: #334155; text-align: justify; word-break: keep-all; }
+    .gdd-li { font-size: 1.05rem; margin-bottom: 10px; color: #475569; }
+    strong { color: #4f46e5; font-weight: 700; }
 
     /* 버튼 스타일 */
     div.stButton > button {
@@ -121,10 +123,10 @@ if API_KEY:
 def generate_specialized_image(prompt_type, genre, art, key):
     if not API_KEY: return None
     prompts = {
-        "concept": f"Cinematic epic game key visual, {genre}, {key} theme, {art} style. 8k resolution, high quality professional digital art.",
-        "ui": f"Professional game UI and UX design mockup, {genre} mobile game interface, {art} style. High fidelity dashboard, menu buttons, clean layout, inspired by {key}.",
-        "world": f"Immersive environment concept art, detailed world of {genre}, location based on {key}, {art} style. Atmospheric lighting.",
-        "character": f"Character concept art portrait or detailed asset sheet, {genre}, {key} motif, {art} style. Professional game character design."
+        "concept": f"Cinematic epic game key visual art, {genre}, theme: {key}, style: {art}. 8k, professional game lighting.",
+        "ui": f"Professional High-fidelity mobile game UI/UX mockup design, {genre} interface, style: {art}. HUD, dashboard, menu buttons, clean layout, inspired by {key}. Digital game design sheet.",
+        "world": f"Environment concept art, immersive game world of {genre}, location theme: {key}, style: {art}. Beautiful landscape.",
+        "character": f"Character concept art portrait or detailed unit asset, {genre} game, motif: {key}, style: {art}. Clear presentation."
     }
     selected_prompt = prompts.get(prompt_type, prompts["concept"])
     url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={API_KEY}"
@@ -177,21 +179,27 @@ with st.container():
                 prompt = f"""
                 당신은 전설적인 게임 기획자입니다. 장르={genre}, 국가={target}, 키워드={key}, 아트={art} 조건으로 전문적인 게임 디자인 문서(GDD)를 작성하세요.
                 
-                문서는 다음 섹션을 포함하며 매우 상세하게 작성해 주세요:
-                1. ## 개요 및 핵심 컨셉: 키워드 {key}가 어떻게 게임의 재미가 되는지 서술.
-                2. ## 세계관 및 아트 방향성: {art} 스타일을 활용한 몰입감 있는 배경 설명.
-                3. ## 핵심 게임 시스템: 전투, 성장, 경제 밸런스 등 메커니즘 상세.
-                4. ## 주요 콘텐츠 구성: 유저가 매일 즐길 수 있는 루프와 장기적 콘텐츠.
-                5. ## UI/UX 및 사용자 경험: 직관적인 인터페이스 설계 및 조작 체계 전략.
-                6. ## 캐릭터 및 주요 에셋: 등장 인물 또는 유닛의 디자인 특징.
+                [중요: 시스템 및 콘텐츠 보강 지시]
+                - "핵심 게임 시스템" 섹션에는 전투 공식, 성장 수치, 재화 경제 흐름을 매우 구체적으로 기술하세요.
+                - "주요 콘텐츠 구성" 섹션에는 유저의 플레이 사이클(일간, 주간, 월간)과 엔드게임 콘텐츠를 상세히 포함하세요.
+                - 총 글자수는 이전보다 1.5배 이상 길게 작성하여 전문성을 확보하세요.
                 
-                [형식 지시]
-                - ## 섹션 제목, ### 소제목 형식을 엄격히 유지하세요.
-                - 마크다운 불렛(*)과 **강조**를 적극적으로 사용하여 가독성을 높이세요.
+                [문서 구조 지시]
+                1. ## 개요 및 핵심 컨셉
+                2. ## 세계관 및 아트 방향성
+                3. ## 핵심 게임 시스템 (상세 수치 포함)
+                4. ## 주요 콘텐츠 구성 (순환 구조 상세)
+                5. ## UI/UX 및 사용자 경험 (인터페이스 설계 전략)
+                6. ## 캐릭터 및 주요 에셋
+                
+                [형식]
+                - ## 섹션 제목, ### 소제목 형식을 유지하세요.
+                - 마크다운 불렛(*)과 **강조**를 적극적으로 사용하세요.
                 """
                 gdd_res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = gdd_res.text
                 
+                # 이미지 생성 (4종)
                 imgs = {
                     "concept": generate_specialized_image("concept", genre, art, key),
                     "ui": generate_specialized_image("ui", genre, art, key),
@@ -206,24 +214,22 @@ def render_gdd_content(content, imgs, title_key):
     html = f"<div id='gdd-preview-container'>"
     html += f"<h1 class='gdd-h1'>{title_key.upper()} 기획안</h1>"
     
-    # 0. 메인 컨셉 이미지 (상단 고정)
+    # 0. 메인이미지
     if imgs.get("concept"):
-        html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['concept']}'></div><div class='img-caption'>[Main Visual Concept]</div>"
+        html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs['concept']}'></div><div class='img-caption'>[Main Concept Visual]</div>"
     
     parts = content.split("## ")
-    image_indices = {
-        "세계관": imgs.get("world"),
-        "아트": imgs.get("world"),
-        "시스템": imgs.get("ui"),
-        "UI": imgs.get("ui"),
-        "UX": imgs.get("ui"),
-        "인터페이스": imgs.get("ui"),
-        "캐릭터": imgs.get("asset"),
-        "에셋": imgs.get("asset"),
-        "콘텐츠": imgs.get("world")
-    }
     
-    used_images = set()
+    # 섹션 제목 키워드별 이미지 매칭
+    img_map = {
+        "세계관": ("world", "[World & Atmosphere]"),
+        "아트": ("world", "[Art Direction]"),
+        "시스템": ("ui", "[UI/UX Mockup Design]"),
+        "UI": ("ui", "[Interface Layout]"),
+        "콘텐츠": ("world", "[Content Concept]"),
+        "캐릭터": ("asset", "[Character Design]"),
+        "에셋": ("asset", "[Game Asset]"),
+    }
 
     for i, part in enumerate(parts):
         if not part.strip(): continue
@@ -234,24 +240,18 @@ def render_gdd_content(content, imgs, title_key):
         
         html += f"<h2 class='gdd-h2'>{section_title}</h2>"
         
+        # 마크다운 렌더링 (간단한 변환)
         processed_body = section_body.replace("### ", "<h3 class='gdd-h3'>").replace("\n", "<br>")
         processed_body = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', processed_body)
         processed_body = re.sub(r'^\* (.*?)$', r'<li class="gdd-li">\1</li>', processed_body, flags=re.M)
         
         html += f"<div class='gdd-p'>{processed_body}</div>"
         
-        # 지능형 섹션별 이미지 배치
-        matched_img = None
-        caption_text = ""
-        
-        for key, img in image_indices.items():
-            if key in section_title and img:
-                matched_img = img
-                caption_text = f"[{key} Visual Reference]"
-                break
-        
-        if matched_img:
-            html += f"<div class='img-wrapper'><img src='data:image/png;base64,{matched_img}'></div><div class='img-caption'>{caption_text}</div>"
+        # 지능형 섹션별 이미지 자동 배치
+        for kw, (img_key, caption) in img_map.items():
+            if kw in section_title and imgs.get(img_key):
+                html += f"<div class='img-wrapper'><img src='data:image/png;base64,{imgs[img_key]}'></div><div class='img-caption'>{caption}</div>"
+                break # 한 섹션당 이미지 하나만
 
     html += "</div>"
     return html
@@ -259,10 +259,11 @@ def render_gdd_content(content, imgs, title_key):
 if st.session_state['gdd_result']:
     st.divider()
     
+    # 화면 렌더링
     gdd_html = render_gdd_content(st.session_state['gdd_result'], st.session_state['generated_images'], key)
     st.markdown(gdd_html, unsafe_allow_html=True)
 
-    # --- 📥 저장 엔진 (서식 유지 파서) ---
+    # --- 📥 저장 엔진 ---
     st.write("---")
     
     export_data = {
@@ -287,25 +288,24 @@ if st.session_state['gdd_result']:
             
             function cleanMd(md) {{
                 return md
-                    .replace(/^### (.*$)/gim, '<h3 style="font-size:20px; font-weight:700; color:#1e293b; margin-top:25px; border-bottom:1px solid #f1f5f9;">$1</h3>')
-                    .replace(/^## (.*$)/gim, '<h2 style="font-size:26px; font-weight:800; color:#4f46e5; border-left:10px solid #4f46e5; padding:10px 20px; background:#f8fafc; margin-top:40px;">$1</h2>')
+                    .replace(/^### (.*$)/gim, '<h3 style="font-size:20px; font-weight:700; color:#1e293b; margin-top:25px; border-bottom:1px solid #f1f5f9; padding-bottom:5px;">$1</h3>')
+                    .replace(/^## (.*$)/gim, '<h2 style="font-size:26px; font-weight:800; color:#4f46e5; border-left:10px solid #4f46e5; padding:10px 20px; background:#f8fafc; margin-top:40px; border-radius:0 8px 8px 0;">$1</h2>')
                     .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-                    .replace(/^\\* (.*$)/gim, '<li style="margin-bottom:8px;">$1</li>')
-                    .replace(/\\n/g, '<br>');
+                    .replace(/^\\* (.*$)/gim, '<li style="margin-bottom:8px; font-size:17px; color:#475569;">$1</li>')
+                    .replace(/\\n/g, '<br>')
+                    .replace(/(<li>.*<\\/li>)/s, '<ul style="padding-left:20px;">$1</ul>');
             }}
 
             function buildDoc(data) {{
                 let html = `<html><head><meta charset="UTF-8">`;
                 html += `<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">`;
                 html += `<style>
-                    body {{ font-family: 'Pretendard', sans-serif; padding: 50px; color: #1e293b; max-width: 800px; margin: 0 auto; line-height: 1.8; background: white; }}
-                    h1 {{ font-size: 42px; border-bottom: 6px solid #4f46e5; padding-bottom: 15px; text-align: center; font-weight: 900; }}
-                    h2 {{ color: #4f46e5; margin-top: 45px; border-left: 10px solid #4f46e5; padding: 10px 20px; background: #f8fafc; font-size: 26px; font-weight: 800; }}
-                    h3 {{ font-size: 20px; font-weight: 700; margin-top: 25px; border-bottom: 1px solid #f1f5f9; }}
-                    img {{ max-width: 700px; border-radius: 12px; margin: 25px auto; display: block; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
-                    p, li {{ font-size: 17px; color: #334155; }}
+                    body {{ font-family: 'Pretendard', sans-serif; padding: 60px; color: #1e293b; max-width: 800px; margin: 0 auto; line-height: 1.8; background: white; }}
+                    h1 {{ font-size: 42px; border-bottom: 6px solid #4f46e5; padding-bottom: 15px; text-align: center; font-weight: 900; margin-bottom: 40px; }}
+                    img {{ max-width: 100%; border-radius: 12px; margin: 30px auto; display: block; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
+                    p, li {{ font-size: 17px; color: #334155; text-align: justify; }}
                     strong {{ color: #4f46e5; }}
-                    .cap {{ text-align: center; color: #94a3b8; font-size: 13px; margin-top: -15px; margin-bottom: 40px; font-weight: 500; }}
+                    .cap {{ text-align: center; color: #94a3b8; font-size: 13px; margin-top: -15px; margin-bottom: 40px; font-weight: 600; }}
                 </style></head><body>`;
                 
                 html += `<h1>${{data.title}}</h1>`;
@@ -317,12 +317,13 @@ if st.session_state['gdd_result']:
                     let st = p.split('\\n')[0];
                     html += cleanMd((i > 0 ? '## ' : '') + p);
                     
+                    // 저장용 문서에도 이미지 매칭 삽입
                     if((st.includes("세계관") || st.includes("아트") || st.includes("콘텐츠")) && data.images.world) 
                         html += `<img src="data:image/png;base64,${{data.images.world}}"><div class="cap">[Visual Reference]</div>`;
                     if((st.includes("시스템") || st.includes("UI") || st.includes("인터페이스")) && data.images.ui) 
-                        html += `<img src="data:image/png;base64,${{data.images.ui}}"><div class="cap">[UI/UX Mockup]</div>`;
+                        html += `<img src="data:image/png;base64,${{data.images.ui}}"><div class="cap">[UI/UX Mockup Design]</div>`;
                     if((st.includes("캐릭터") || st.includes("에셋")) && data.images.asset) 
-                        html += `<img src="data:image/png;base64,${{data.images.asset}}"><div class="cap">[Character & Asset]</div>`;
+                        html += `<img src="data:image/png;base64,${{data.images.asset}}"><div class="cap">[Character & Asset Concept]</div>`;
                 }});
                 
                 html += `</body></html>`;
@@ -338,7 +339,7 @@ if st.session_state['gdd_result']:
 
             document.getElementById('pngBtn').onclick = () => {{
                 const btn = document.getElementById('pngBtn');
-                btn.innerText = "⏳ 렌더링 중...";
+                btn.innerText = "⏳ 고화질 렌더링 중...";
                 const div = document.createElement('div');
                 div.style.position = 'absolute'; div.style.left = '-9999px'; div.style.width = '800px';
                 div.innerHTML = buildDoc(data);
