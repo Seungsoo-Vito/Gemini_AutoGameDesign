@@ -1,6 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-import requests
 import base64
 import json
 import io
@@ -8,7 +7,7 @@ import re
 import streamlit.components.v1 as components
 
 # 1. 페이지 설정
-st.set_page_config(page_title="비토쨩 GDD Pro", page_icon="🎮", layout="wide")
+st.set_page_config(page_title="비토쨩 GDD Pro (Text Only)", page_icon="📝", layout="wide")
 
 # --- 🎨 스타일링 ---
 st.markdown("""
@@ -27,18 +26,6 @@ st.markdown("""
     div.stButton > button {
         border-radius: 12px !important; font-weight: 700 !important;
         height: 3.5rem; width: 100%;
-    }
-    
-    .status-badge {
-        padding: 8px 12px;
-        border-radius: 8px;
-        margin-bottom: 5px;
-        font-size: 0.85rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -62,40 +49,8 @@ with st.sidebar:
             st.session_state["api_key"] = user_key
             st.rerun()
 
-    # 이미지 로딩 상태 표시
-    if 'images' in st.session_state and st.session_state['images']:
-        st.divider()
-        st.subheader("🖼️ 이미지 생성 현황")
-        labels = {"concept": "메인 컨셉", "world": "세계관 아트", "ui": "UI/UX 목업", "character": "캐릭터 에셋"}
-        for k, v in st.session_state['images'].items():
-            status_text = "준비됨" if v else "실패"
-            status_color = "#10b981" if v else "#ef4444"
-            st.markdown(f'<div class="status-badge"><span>{labels.get(k, k)}</span><b style="color: {status_color};">{status_text}</b></div>', unsafe_allow_html=True)
-
+# 세션 상태 관리
 if 'gdd_result' not in st.session_state: st.session_state['gdd_result'] = None
-if 'images' not in st.session_state: st.session_state['images'] = {}
-
-# --- 🖼️ 이미지 생성 함수 (대화 초반 성공 규격 복구) ---
-def generate_image(prompt_text):
-    api_key = get_api_key()
-    if not api_key: return None
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={api_key}"
-    
-    # 초반에 성공했던 표준 리스트 형식을 다시 사용합니다.
-    payload = {
-        "instances": [{"prompt": prompt_text}],
-        "parameters": {"sampleCount": 1}
-    }
-    
-    try:
-        response = requests.post(url, json=payload, timeout=120)
-        if response.status_code == 200:
-            res_json = response.json()
-            if "predictions" in res_json and len(res_json["predictions"]) > 0:
-                return res_json["predictions"][0]["bytesBase64Encoded"]
-    except:
-        pass
-    return None
 
 # --- 🏠 메인 화면 ---
 st.markdown('<h1 class="main-title">비토쨩 자동 기획서 만들기 🎮</h1>', unsafe_allow_html=True)
@@ -108,34 +63,38 @@ with st.container():
     with c3: art = st.selectbox("아트 스타일", ["픽셀 아트", "2D 카툰", "실사풍", "3D 캐주얼", "사이버펑크"])
     with c4: key = st.text_input("핵심 키워드", placeholder="예: 고양이, 지하철, 타임루프")
     
-    if st.button("고품격 통합 기획서 생성 시작 ✨", type="primary"):
-        if not current_api_key: st.error("API 키를 설정해주세요.")
-        elif not key: st.warning("키워드를 입력해주세요.")
+    if st.button("전문 기획서 생성 시작 ✨", type="primary"):
+        if not current_api_key: 
+            st.error("사이드바에서 API 키를 설정해주세요.")
+        elif not key: 
+            st.warning("키워드를 입력해주세요.")
         else:
-            with st.spinner("전문 기획자가 문서를 작성하고 아트를 생성 중입니다..."):
-                # 1. GDD 텍스트 생성
+            with st.spinner("전문 기획자가 문서를 작성 중입니다..."):
+                # GDD 텍스트 생성
                 model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
-                prompt = f"장르:{genre}, 타겟:{target}, 스타일:{art}, 키워드:{key} 조건으로 전문 GDD를 작성하세요. ## 제목, ### 소제목, **강조**, $$ 공식 $$, | 표 | 형식을 포함하고 UI/UX 목업 섹션을 반드시 만드세요. 제목 기호 #가 노출되지 않게 하세요."
+                prompt = f"""
+                전문 게임 기획자로서 장르:{genre}, 타겟:{target}, 스타일:{art}, 키워드:{key} 조건으로 전문 GDD를 작성하세요.
+                
+                [지침]
+                1. ## 제목 (상위 항목) - 각 섹션의 시작
+                2. ### 소제목 (하위 항목) - 세부 설명
+                3. **강조 텍스트**를 활용하여 주요 포인트를 명시
+                4. 전투/성장 공식은 반드시 '$$ 공식 $$' 문법을 사용하여 독립된 박스로 표현
+                5. 복잡한 시스템이나 수치는 | 표 | 형식을 활용하여 정리
+                6. 제목 앞의 '#' 기호가 최종 렌더링 결과물에 노출되지 않도록 구조화하세요.
+                7. 이미지 관련 태그나 설명은 포함하지 마세요. 오직 텍스트 정보에 집중하세요.
+                """
                 res = model.generate_content(prompt)
                 st.session_state['gdd_result'] = res.text
-                
-                # 2. 이미지 생성
-                st.session_state['images'] = {
-                    "concept": generate_image(f"Masterpiece game art visual, {genre}, theme:{key}, style:{art}, 8k, cinematic"),
-                    "world": generate_image(f"Stunning environment concept, {genre} world, {art} style, high detail"),
-                    "ui": generate_image(f"Mobile game UI HUD mockup, {genre}, professional layout, {art}"),
-                    "character": generate_image(f"Game character concept art, {genre}, motif:{key}, {art} style")
-                }
 
-# --- 🚀 통합 렌더링 엔진 (데이터 전송 보강) ---
+# --- 🚀 텍스트 전용 렌더링 엔진 ---
 if st.session_state['gdd_result']:
     st.divider()
     
-    # 데이터 깨짐 방지를 위해 전체 데이터를 Base64로 인코딩하여 전달
+    # 데이터 인코딩 및 전송 준비
     payload_data = {
         "title": f"{key.upper()} PROJECT GDD",
-        "content": st.session_state['gdd_result'],
-        "images": st.session_state['images']
+        "content": st.session_state['gdd_result']
     }
     encoded_payload = base64.b64encode(json.dumps(payload_data).encode('utf-8')).decode('utf-8')
 
@@ -144,7 +103,6 @@ if st.session_state['gdd_result']:
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script>
         (function() {{
-            // 데이터를 안전하게 복호화 (한글 깨짐 방지 처리)
             const rawData = atob('{encoded_payload}');
             const data = JSON.parse(decodeURIComponent(escape(rawData)));
             
@@ -154,80 +112,77 @@ if st.session_state['gdd_result']:
                 return t.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color:#4f46e5; font-weight:800;">$1</strong>');
             }}
 
-            function createImgBox(b64, label) {{
-                if(!b64) return '';
-                return `<div style="text-align:center; margin:60px 0; padding:30px; background:#f8fafc; border-radius:24px; border:1px solid #e2e8f0;">
-                    <img src="data:image/png;base64,${{b64}}" style="width:100%; border-radius:15px; box-shadow:0 15px 35px rgba(0,0,0,0.1);">
-                    <div style="font-size:16px; color:#6366f1; font-weight:800; margin-top:20px; text-transform:uppercase; letter-spacing:1px;">[Reference: ${{label}}]</div>
-                </div>`;
-            }}
-
             function parseContent(text) {{
                 return text.split('\\n').map(line => {{
                     let l = line.trim();
                     if (!l || l === '#' || l === '##' || l === '###') return '';
                     
-                    // 수식 처리
                     if (l.startsWith('$$')) {{
                         return `<div style="background:#f8faff; border:1px solid #c7d2fe; padding:30px; border-radius:12px; text-align:center; font-size:24px; font-weight:700; color:#3730a3; margin:40px 0; font-family:'Times New Roman', serif;">${{inline(l.replace(/\\$\\$/g, ''))}}</div>`;
                     }}
                     
-                    // 표 처리
                     if (l.startsWith('|')) {{
                         const cells = l.split('|').filter(c => c.trim() !== '' || l.indexOf('|') !== l.lastIndexOf('|')).map(c => c.trim());
                         if (cells.length === 0 || l.includes('---')) return '';
                         return `<tr>${{cells.map(c => `<td style="padding:15px; border:1px solid #f1f5f9; font-size:18px;">${{inline(c)}}</td>`).join('')}}</tr>`;
                     }}
                     
-                    // 상위 제목 (##) - Indigo Blue + # 제거
                     if (l.startsWith('## ')) {{
                         return `<h2 style="font-size:34px; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:20px; margin-top:60px; background:#f8fafc; padding:15px 20px; border-radius:0 12px 12px 0; font-weight:800;">${{l.replace(/^##\\s*/, '')}}</h2>`;
                     }}
                     
-                    // 하위 제목 (###) - Teal Green + # 제거
                     if (l.startsWith('### ')) {{
-                        const sub = l.replace(/^###\\s*/, '');
-                        let h = `<h3 style="font-size:26px; color:#0891b2; margin-top:45px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">${{sub}}</h3>`;
-                        // UI 목업 섹션일 때 이미지 자동 삽입
-                        if ((sub.includes('목업') || sub.includes('Mockup')) && data.images.ui) {{
-                            h += createImgBox(data.images.ui, 'UI/UX Mockup');
-                        }}
-                        return h;
+                        return `<h3 style="font-size:26px; color:#0891b2; margin-top:45px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">${{l.replace(/^###\\s*/, '')}}</h3>`;
                     }}
                     
-                    // 일반 본문
                     return `<p style="font-size:21px; color:#334155; margin-bottom:25px; line-height:1.9; text-align:justify;">${{inline(l)}}</p>`;
                 }}).join('');
-            }}
+            }
 
             let bodyHtml = parseContent(data.content).replace(/(<tr>.*?<\\/tr>)+/g, m => `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; margin:30px 0; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">${{m}}</table></div>`);
 
             root.innerHTML = `
-                <div class="no-print" style="display:flex; gap:20px; max-width:1200px; margin:0 auto 30px auto;">
+                <div class="no-print" style="display:flex; gap:15px; max-width:1200px; margin:0 auto 30px auto;">
                     <button onclick="window.print()" style="flex:1; padding:20px; border-radius:15px; background:#4f46e5; color:white; border:none; font-weight:900; font-size:18px; cursor:pointer; box-shadow:0 4px 15px rgba(0,0,0,0.1);">📄 PDF 저장</button>
                     <button id="cap-btn" style="flex:1; padding:20px; border-radius:15px; background:#7c3aed; color:white; border:none; font-weight:900; font-size:18px; cursor:pointer; box-shadow:0 4px 15px rgba(0,0,0,0.1);">🖼️ 이미지 저장</button>
+                    <button id="copy-btn" style="flex:1; padding:20px; border-radius:15px; background:#f59e0b; color:white; border:none; font-weight:900; font-size:18px; cursor:pointer; box-shadow:0 4px 15px rgba(0,0,0,0.1);">📋 텍스트 복사</button>
                 </div>
                 <div id="gdd-paper" style="background:white; max-width:1200px; margin:0 auto; padding:100px 80px; border-radius:30px; border:1px solid #e2e8f0; box-shadow:0 30px 60px rgba(0,0,0,0.05); color:#1e293b;">
                     <h1 style="font-size:64px; font-weight:900; text-align:center; border-bottom:12px solid #4f46e5; padding-bottom:40px; margin-bottom:60px; letter-spacing:-0.03em;">${{data.title}}</h1>
-                    ${{createImgBox(data.images.concept, 'Main Concept Art')}}
                     ${{bodyHtml}}
-                    ${{createImgBox(data.images.world, 'World Environment Concept')}}
-                    ${{createImgBox(data.images.character, 'Main Character Asset')}}
                 </div>
             `;
 
+            // 이미지 저장 로직
             document.getElementById('cap-btn').onclick = function() {{
                 const btn = this;
                 btn.innerText = "⏳ 렌더링 중...";
                 html2canvas(document.getElementById('gdd-paper'), {{ scale: 2, useCORS: true }}).then(canvas => {{
                     const a = document.createElement('a');
-                    a.download = 'Vito_GDD_Final_Report.png';
+                    a.download = 'Vito_GDD_Text_Report.png';
                     a.href = canvas.toDataURL('image/png');
                     a.click();
-                    btn.innerText = "🖼️ 이미지 저장";
+                    btn.innerText = "🖼️ 기획서 이미지 저장";
                 }});
             }};
-        }})();
+
+            // 🌟 텍스트 복사 로직 (새로 추가)
+            document.getElementById('copy-btn').onclick = function() {{
+                const btn = this;
+                const textArea = document.createElement("textarea");
+                textArea.value = data.content; // 마크다운 원문 복사
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {{
+                    document.execCommand('copy');
+                    btn.innerText = "✅ 복사 완료!";
+                    setTimeout(() => {{ btn.innerText = "📋 텍스트 복사"; }}, 2000);
+                }} catch (err) {{
+                    console.error('복사 실패', err);
+                }}
+                document.body.removeChild(textArea);
+            }};
+        })();
     </script>
     <style> 
         @media print {{ 
