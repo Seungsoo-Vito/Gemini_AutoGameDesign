@@ -79,7 +79,7 @@ with st.container():
                 1. ## 제목 (상위 항목) - 각 섹션의 시작
                 2. ### 소제목 (하위 항목) - 세부 설명
                 3. **강조 텍스트**를 활용하여 주요 포인트를 명시
-                4. 전투/성장 공식은 반드시 '$$ 공식 $$' 문법을 사용하여 독립된 박스로 표현
+                4. 전투/성장 공식은 반드시 '$$공식$$' 문법을 사용하여 독립된 박스로 표현
                 5. 복잡한 시스템이나 수치는 | 표 | 형식을 활용하여 정리
                 6. 제목 앞의 '#' 기호가 최종 렌더링 결과물에 노출되지 않도록 구조화하세요.
                 7. 이미지 관련 태그나 설명은 포함하지 마세요. 오직 텍스트 정보에 집중하세요.
@@ -137,7 +137,7 @@ if st.session_state['gdd_result']:
                     
                     return `<p style="font-size:21px; color:#334155; margin-bottom:25px; line-height:1.9; text-align:justify;">${{inline(l)}}</p>`;
                 }}).join('');
-            }
+            }}
 
             let bodyHtml = parseContent(data.content).replace(/(<tr>.*?<\\/tr>)+/g, m => `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; margin:30px 0; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">${{m}}</table></div>`);
 
@@ -166,11 +166,11 @@ if st.session_state['gdd_result']:
                 }});
             }};
 
-            // 🌟 텍스트 복사 로직 (새로 추가)
+            // 텍스트 복사 로직
             document.getElementById('copy-btn').onclick = function() {{
                 const btn = this;
                 const textArea = document.createElement("textarea");
-                textArea.value = data.content; // 마크다운 원문 복사
+                textArea.value = data.content; 
                 document.body.appendChild(textArea);
                 textArea.select();
                 try {{
@@ -182,7 +182,7 @@ if st.session_state['gdd_result']:
                 }}
                 document.body.removeChild(textArea);
             }};
-        })();
+        }})();
     </script>
     <style> 
         @media print {{ 
