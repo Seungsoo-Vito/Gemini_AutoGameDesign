@@ -140,7 +140,7 @@ if st.session_state['gdd_result']:
                     if (!l || l === '#' || l === '##' || l === '###') return '';
                     
                     if (l.startsWith('$$')) {{
-                        return `<div style="background:#f8faff; border:1px solid #c7d2fe; padding:30px; border-radius:12px; text-align:center; font-size:24px; font-weight:700; color:#3730a3; margin:40px 0; font-family:'Times New Roman', serif;">${{inline(l.replace(/\\$\\$/g, ''))}}</div>`;
+                        return `<div style="background:#f8faff; border:1px solid #c7d2fe; padding:30px; border-radius:12px; text-align:center; font-size:24px; font-weight:700; color:#3730a3; margin:40px 0; font-family:'Times New Roman', serif; box-shadow: 0 4px 12px rgba(79,70,229,0.05);">${{inline(l.replace(/\\$\\$/g, ''))}}</div>`;
                     }}
                     
                     if (l.startsWith('|')) {{
@@ -150,7 +150,7 @@ if st.session_state['gdd_result']:
                     }}
                     
                     if (l.startsWith('## ')) {{
-                        return `<h2 style="font-size:34px; color:#4f46e5; border-left:12px solid #4f46e5; padding-left:20px; margin-top:60px; background:#f8fafc; border-radius:0 12px 12px 0; font-weight:800;">${{l.replace(/^##\\s*/, '')}}</h2>`;
+                        return `<h2 style="font-size:34px; color:#4f46e5; border-left:10px solid #4f46e5; padding:20px; margin-top:60px; background:#f8fafc; border-radius:0 12px 12px 0; font-weight:800;">${{l.replace(/^##\\s*/, '')}}</h2>`;
                     }}
                     
                     if (l.startsWith('### ')) {{
@@ -208,7 +208,7 @@ if st.session_state['gdd_result']:
                 }} catch (err) {{}}
                 document.body.removeChild(textArea);
             }};
-        })();
+        }})();
     </script>
     <style> 
         @media print {{ 
